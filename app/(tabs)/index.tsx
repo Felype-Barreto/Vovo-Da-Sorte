@@ -1,5 +1,6 @@
 
 
+import { useAppOpenInterstitial } from '@/src/ads/useAppOpenInterstitial';
 import { GlassCard } from '@/src/components/GlassCard';
 import { NumberBall } from '@/src/components/NumberBall';
 import { getAdUnitId, isAdEnabled } from '@/src/config/adConfig';
@@ -32,6 +33,7 @@ function formatTimeAgo(timestamp: number): string {
 }
 
 function HomeScreen() {
+  useAppOpenInterstitial();
   const [loterias, setLoterias] = useState([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(Date.now());

@@ -16,6 +16,7 @@ import { SettingsProvider } from '@/src/context/SettingsContext';
 import { initBetsDb } from '@/src/megasena/bets-db';
 import { performSyncIfNeeded } from '@/src/megasena/sync-manager';
 
+import { AdDisplayProvider } from '@/src/ads/AdDisplayContext';
 import { getGoogleMobileAds, initGoogleMobileAdsIfAvailable } from '@/src/ads/googleMobileAds';
 import { useConsentWithAds } from '@/src/components/useConsentWithAds';
 import { isAdEnabled } from '@/src/config/adConfig';
@@ -105,7 +106,9 @@ export default function RootLayout() {
     <ConsentProvider>
       <OnboardingProvider>
         <SettingsProvider>
-          <RootLayoutNav />
+          <AdDisplayProvider>
+            <RootLayoutNav />
+          </AdDisplayProvider>
         </SettingsProvider>
       </OnboardingProvider>
     </ConsentProvider>
