@@ -9,9 +9,11 @@ import { NativeAdCard } from '@/src/components/NativeAdCard';
 import { NumberBall } from '@/src/components/NumberBall';
 import { useLottery } from '@/src/context/LotteryContext';
 import { maybeNotifyNewResultKnownContest } from '@/src/megasena/alerts';
-import { fetchCaixaLotteryOverview, loadCaixaLotteryHistoryLite, type CaixaLotteryOverview } from '@/src/megasena/lottery-caixa';
+import { listSavedBets, type SavedBet } from '@/src/megasena/bets-db';
+import { fetchCaixaLotteryDraw, fetchCaixaLotteryOverview, loadCaixaLotteryHistoryLite, type CaixaLotteryOverview } from '@/src/megasena/lottery-caixa';
 import { getLotteryConfig } from '@/src/megasena/lotteryConfigs';
 import { computeFrequencies, topNumbers } from '@/src/megasena/stats';
+import { countHits } from '@/src/megasena/ticket';
 import type { LotteryDraw, LotteryType } from '@/src/megasena/types';
 
 function formatDatePtBr(iso: string | undefined): string {
@@ -22,6 +24,43 @@ function formatDatePtBr(iso: string | undefined): string {
 }
 
 export default function HistoricoScreen() {
+    // Conferência de aposta salva
+    const [savedBets, setSavedBets] = useState<SavedBet[]>([]);
+    const [selectedBetId, setSelectedBetId] = useState<string | null>(null);
+    const [checking, setChecking] = useState(false);
+    const [checkResult, setCheckResult] = useState<{ hits: number; bet?: SavedBet } | null>(null);
+
+    // Carrega apostas salvas ao abrir ou trocar loteria
+    useEffect(() => {
+      listSavedBets(selectedLottery).then(setSavedBets).catch(() => setSavedBets([]));
+      setSelectedBetId(null);
+      setCheckResult(null);
+    }, [selectedLottery, lastUpdateTimestamp]);
+
+    // Função para conferir aposta selecionada
+    const conferirAposta = async () => {
+      if (!selectedBetId) return;
+      setChecking(true);
+      const bet = savedBets.find(b => b.id === selectedBetId);
+      if (!bet || !bet.contest) {
+        setCheckResult(null);
+        setChecking(false);
+        return;
+      }
+      try {
+        const draw = await fetchCaixaLotteryDraw(bet.lotteryId, bet.contest);
+        if (!draw?.numbers) {
+          setCheckResult(null);
+          setChecking(false);
+          return;
+        }
+        const hits = countHits(bet.numbers, draw.numbers);
+        setCheckResult({ hits, bet });
+      } catch (e) {
+        setCheckResult(null);
+      }
+      setChecking(false);
+    };
   const { selectedLottery, setSelectedLottery, availableLotteries } = useLottery();
 
   const [overview, setOverview] = useState<CaixaLotteryOverview | null>(null);
@@ -114,6 +153,74 @@ export default function HistoricoScreen() {
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+        {/* Conferência de aposta salva */}
+        <GlassCard style={{ gap: 10, marginBottom: 10 }}>
+          <Text style={styles.sectionTitle}>Confira seu jogo</Text>
+          <Text style={styles.smallNote}>
+            Selecione uma aposta salva para conferir com o último resultado oficial desta loteria.
+          </Text>
+          {savedBets.length === 0 ? (
+            <Text style={styles.smallNote}>Nenhuma aposta salva para esta loteria.</Text>
+          ) : (
+            <>
+              <RNView style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14, justifyContent: 'center', marginBottom: 10 }}>
+                {savedBets.map(bet => (
+                  <Pressable
+                    key={bet.id}
+                    onPress={() => setSelectedBetId(bet.id)}
+                    style={({ pressed }) => [{
+                      padding: 14,
+                      borderRadius: 12,
+                      borderWidth: bet.id === selectedBetId ? 2 : 1,
+                      borderColor: bet.id === selectedBetId ? '#20d361' : 'rgba(255,255,255,0.2)',
+                      backgroundColor: bet.id === selectedBetId ? 'rgba(32,211,97,0.18)' : 'rgba(255,255,255,0.07)',
+                      opacity: pressed ? 0.7 : 1,
+                      minWidth: 110,
+                      alignItems: 'center',
+                      elevation: bet.id === selectedBetId ? 3 : 1,
+                    }]}
+                  >
+                    <Text style={{ fontWeight: '700', color: '#fff', fontSize: 17, marginBottom: 4 }}>#{bet.id.slice(-5)}</Text>
+                    <RNView style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 2, justifyContent: 'center' }}>
+                      {bet.numbers.map(n => (
+                        <NumberBall key={n} value={n} size={28} />
+                      ))}
+                    </RNView>
+                  </Pressable>
+                ))}
+              </RNView>
+              <RNView style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 10 }}>
+                <Pressable
+                  onPress={conferirAposta}
+                  disabled={!selectedBetId || checking}
+                  style={({ pressed }) => [{
+                    backgroundColor: '#20d361',
+                    borderRadius: 14,
+                    paddingVertical: 14,
+                    paddingHorizontal: 32,
+                    alignItems: 'center',
+                    opacity: !selectedBetId || checking || pressed ? 0.6 : 1,
+                    elevation: 2,
+                  }]}
+                >
+                  <Text style={{ color: '#fff', fontWeight: '900', fontSize: 18, letterSpacing: 1 }}>
+                    {checking ? 'Conferindo…' : 'Conferir aposta'}
+                  </Text>
+                </Pressable>
+              </RNView>
+              {checkResult && checkResult.bet && (
+                <RNView style={{ marginTop: 10, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 17, fontWeight: '900', color: '#fff' }}>
+                    Você acertou {checkResult.hits} número{checkResult.hits === 1 ? '' : 's'}!
+                  </Text>
+                  <Text style={{ fontSize: 14, color: '#fff', marginTop: 4 }}>
+                    (Atenção: esta conferência é apenas informativa. Confira sempre no site oficial da Caixa antes de descartar seu bilhete.)
+                  </Text>
+                </RNView>
+              )}
+            </>
+          )}
+        </GlassCard>
         <RNView style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <Pressable
             accessibilityRole="button"

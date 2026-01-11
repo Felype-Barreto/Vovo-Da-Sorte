@@ -1,12 +1,14 @@
+import { fetchCaixaLotteryDraw } from '@/src/megasena/lottery-caixa';
+import { countHits } from '@/src/megasena/ticket';
 import React, { useMemo, useState } from 'react';
 import {
-    Alert,
-    Modal,
-    Pressable,
-    View as RNView,
-    ScrollView,
-    StyleSheet,
-    TextInput,
+  Alert,
+  Modal,
+  Pressable,
+  View as RNView,
+  ScrollView,
+  StyleSheet,
+  TextInput,
 } from 'react-native';
 
 import { useFocusEffect } from '@react-navigation/native';
@@ -44,6 +46,8 @@ export default function ThreeScreen() {
   }, [lotteryId, config.totalNumbers]);
   const requiredCount = config.numbersPerDraw;
   const groups = useMemo(() => groupBetsByLotteryAndContest(bets), [bets]);
+  const [checkingBetId, setCheckingBetId] = useState<string | null>(null);
+  const [checkResult, setCheckResult] = useState<any>(null);
   async function reload() {
     try {
       setLoading(true);
@@ -130,38 +134,81 @@ export default function ThreeScreen() {
     );
   }
 
+  // Função para conferir aposta
+  async function checkBetResult(bet: SavedBet) {
+    setCheckingBetId(bet.id);
+    setCheckResult(null);
+    try {
+      const draw = await fetchCaixaLotteryDraw(bet.lotteryId, bet.contest);
+      if (!draw?.numbers) {
+        setCheckResult({ error: 'Não foi possível obter o resultado oficial.' });
+        setCheckingBetId(null);
+        return;
+      }
+      const hits = countHits(bet.numbers, draw.numbers);
+      setCheckResult({
+        bet,
+        draw,
+        hits,
+      });
+    } catch (e) {
+      setCheckResult({ error: 'Erro ao buscar resultado.' });
+    }
+    setCheckingBetId(null);
+  }
+
+
   return (
-	<View style={{ flex: 1, backgroundColor: '#181c24' }}>
-	  <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40, gap: 16 }}>
-		<View style={{ borderRadius: 16, padding: 18, marginBottom: 16, borderWidth: 1, borderColor: '#20d361', backgroundColor: '#232a38' }}>
-		  <RNView style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-			<RNView style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-			  <Text style={{ fontSize: 28 }}>📝</Text>
-			  <Text style={[styles.title, { fontSize: 28, marginBottom: 0 }]}>Meus Jogos</Text>
-			</RNView>
-			<RNView style={styles.headerActions}>
-			  <Pressable
-				accessibilityRole="button"
-				onPress={() => setAdding(true)}
-				style={({ pressed }) => [styles.headerButton, { opacity: pressed ? 0.85 : 1 }]}
-			  >
-				<Text style={styles.headerButtonText}>Adicionar</Text>
-			  </Pressable>
-			  <Pressable
-				accessibilityRole="button"
-				onPress={confirmClearAll}
-				style={({ pressed }) => [
-				  styles.headerDangerButton,
-				  bets.length === 0 ? { opacity: 0.4 } : null,
-                  { opacity: pressed ? 0.75 : 1 },
-				]}
-				disabled={bets.length === 0}
-			  >
-				<Text style={styles.headerButtonText}>Limpar</Text>
-			  </Pressable>
-			</RNView>
-		  </RNView>
-		</View>
+    <View style={{ flex: 1, backgroundColor: '#181c24' }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40, gap: 24 }}>
+        <View style={{ borderRadius: 18, padding: 22, marginBottom: 18, borderWidth: 1.5, borderColor: '#20d361', backgroundColor: '#232a38', shadowColor: '#20d361', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } }}>
+          <RNView style={{ flexDirection: 'row', alignItems: 'center', gap: 14, justifyContent: 'flex-start' }}>
+            <Text style={{ fontSize: 30 }}>📝</Text>
+            <Text style={[styles.title, { fontSize: 30, marginBottom: 0 }]}>Meus Jogos</Text>
+          </RNView>
+        </View>
+        {/* Botões de ação centralizados e destacados */}
+        <RNView style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 24, marginBottom: 18 }}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setAdding(true)}
+            style={({ pressed }) => [{
+              minHeight: 48,
+              minWidth: 120,
+              paddingHorizontal: 24,
+              borderRadius: 18,
+              backgroundColor: '#20d361',
+              alignItems: 'center',
+              justifyContent: 'center',
+              shadowColor: '#20d361',
+              shadowOpacity: 0.12,
+              shadowRadius: 6,
+              shadowOffset: { width: 0, height: 2 },
+              opacity: pressed ? 0.7 : 1,
+            }]}
+          >
+            <Text style={{ color: '#fff', fontWeight: '900', fontSize: 18 }}>Adicionar</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            onPress={confirmClearAll}
+            style={({ pressed }) => [{
+              minHeight: 48,
+              minWidth: 120,
+              paddingHorizontal: 24,
+              borderRadius: 18,
+              backgroundColor: bets.length === 0 ? 'rgba(239,68,68,0.18)' : '#ef4444',
+              borderWidth: 1.5,
+              borderColor: '#ef4444',
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: bets.length === 0 ? 0.4 : (pressed ? 0.7 : 1),
+            }]}
+            disabled={bets.length === 0}
+          >
+            <Text style={{ color: '#fff', fontWeight: '900', fontSize: 18 }}>Limpar</Text>
+          </Pressable>
+        </RNView>
 
 		<Text style={styles.subtitle}>
 		  Aqui ficam os jogos salvos pelo Scanner e os adicionados manualmente.
@@ -186,23 +233,81 @@ export default function ThreeScreen() {
 				  <Text style={styles.groupTitle}>{lot.name}</Text>
 				  <Text style={styles.groupSubtitle}>{contestLabel}</Text>
 
-				  {g.bets.map((b) => (
-					<RNView key={b.id} style={styles.betRow}>
-					  <RNView style={styles.betNumbers}>
-						{b.numbers.slice(0, 20).map((n) => (
-						  <NumberBall key={`${b.id}-${n}`} value={n} size={30} textColor="#0b1220" />
-						))}
-					  </RNView>
-
-					  <Pressable
-						accessibilityRole="button"
-						onPress={() => confirmDelete(b.id)}
-						style={({ pressed }) => [styles.deleteButton, { opacity: pressed ? 0.75 : 1 }]}
-					  >
-						<Text style={styles.deleteButtonText}>Remover</Text>
-					  </Pressable>
-					</RNView>
-				  ))}
+          {g.bets.map((b) => (
+            <RNView key={b.id} style={styles.betRow}>
+              <RNView style={styles.betNumbers}>
+                {b.numbers.slice(0, 20).map((n) => (
+                  <NumberBall key={`${b.id}-${n}`} value={n} size={30} textColor="#0b1220" />
+                ))}
+              </RNView>
+              <RNView style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => checkBetResult(b)}
+                  style={({ pressed }) => [{
+                    minHeight: 40,
+                    minWidth: 110,
+                    paddingHorizontal: 18,
+                    borderRadius: 14,
+                    backgroundColor: '#20d361',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    shadowColor: '#20d361',
+                    shadowOpacity: 0.10,
+                    shadowRadius: 4,
+                    shadowOffset: { width: 0, height: 1 },
+                    opacity: pressed || checkingBetId === b.id ? 0.7 : 1,
+                  }]}
+                  disabled={checkingBetId === b.id}
+                >
+                  <Text style={{ color: '#fff', fontWeight: '900', fontSize: 15 }}>{checkingBetId === b.id ? 'Conferindo…' : 'Conferir'}</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => confirmDelete(b.id)}
+                  style={({ pressed }) => [{
+                    minHeight: 40,
+                    minWidth: 110,
+                    paddingHorizontal: 18,
+                    borderRadius: 14,
+                    backgroundColor: '#ef4444',
+                    borderWidth: 1.2,
+                    borderColor: '#ef4444',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: pressed ? 0.7 : 1,
+                  }]}
+                >
+                  <Text style={{ color: '#fff', fontWeight: '900', fontSize: 15 }}>Remover</Text>
+                </Pressable>
+              </RNView>
+              {/* Resultado da conferência */}
+              {checkResult && checkResult.bet?.id === b.id && (
+                <GlassCard style={{ marginTop: 10, backgroundColor: '#1e293b', borderColor: '#20d361', borderWidth: 1 }}>
+                  {checkResult.error ? (
+                    <Text style={{ color: '#ef4444', fontWeight: '700' }}>{checkResult.error}</Text>
+                  ) : (
+                    <>
+                      <Text style={{ color: '#fff', fontWeight: '900', fontSize: 16 }}>
+                        Você acertou {checkResult.hits} número{checkResult.hits === 1 ? '' : 's'}!
+                      </Text>
+                      <Text style={{ color: '#fff', marginTop: 4 }}>
+                        Resultado oficial do concurso {checkResult.draw.contest}:
+                      </Text>
+                      <RNView style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                        {checkResult.draw.numbers.map((n: number) => (
+                          <NumberBall key={n} value={n} size={28} textColor="#0b1220" />
+                        ))}
+                      </RNView>
+                      <Text style={{ color: '#fff', fontSize: 13, marginTop: 8 }}>
+                        Atenção: esta conferência é apenas informativa. Confira sempre no site oficial da Caixa antes de descartar seu bilhete.
+                      </Text>
+                    </>
+                  )}
+                </GlassCard>
+              )}
+            </RNView>
+          ))}
 				</GlassCard>
 			  );
 			})
@@ -210,28 +315,30 @@ export default function ThreeScreen() {
 	  </ScrollView>
 
       <Modal visible={adding} transparent animationType="slide" onRequestClose={() => setAdding(false)}>
-        <Pressable style={styles.modalBackdrop} onPress={() => setAdding(false)}>
-          <Pressable style={styles.modalSheet} onPress={() => {}}>
+        <View style={styles.modalBackdrop}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setAdding(false)} />
+          <View style={[styles.modalSheet, { paddingBottom: 0 }]}> 
             <ScrollView
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: 64, gap: 14 }}
+              contentContainerStyle={{ paddingBottom: 80, gap: 20 }}
             >
-              <RNView style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Adicionar jogo</Text>
+              <RNView style={[styles.modalHeader, { marginBottom: 18 }]}> 
+                <Text style={[styles.modalTitle, { fontSize: 22 }]}>Adicionar jogo</Text>
                 <Pressable
                   accessibilityRole="button"
                   onPress={() => setAdding(false)}
                   android_ripple={{ color: 'rgba(255,255,255,0.14)', borderless: false }}
-                  style={({ pressed }) => [{ padding: 10, opacity: pressed ? 0.7 : 1 }]}
+                  style={({ pressed }) => [{ padding: 12, opacity: pressed ? 0.7 : 1 }]}
                 >
                   <Text style={styles.modalClose}>X</Text>
                 </Pressable>
               </RNView>
 
-              <GlassCard style={{ gap: 12 }}>
-                <Text style={styles.sectionTitle}>1) 📊 Escolha o jogo</Text>
+              {/* Etapa 1: Escolha do jogo */}
+              <GlassCard style={{ gap: 18, padding: 18 }}>
+                <Text style={[styles.sectionTitle, { fontSize: 17 }]}>1) 📊 Escolha o jogo</Text>
                 <Text style={styles.note}>Toque no jogo que deseja adicionar</Text>
-                <RNView style={{ gap: 10 }}>
+                <RNView style={{ gap: 6, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
                   {availableLotteries.map((id) => {
                     const c = getLotteryConfig(id);
                     const selected = id === lotteryId;
@@ -247,7 +354,7 @@ export default function ThreeScreen() {
                         android_ripple={{ color: 'rgba(255,255,255,0.14)', borderless: false }}
                         style={({ pressed }) => [
                           styles.lotteryButton,
-                          { borderColor: selected ? c.hexColor : 'rgba(255,255,255,0.25)' },
+                          { borderColor: selected ? c.hexColor : 'rgba(255,255,255,0.25)', minWidth: 80, marginBottom: 8 },
                           selected ? { 
                             backgroundColor: c.hexColor + '20',
                             borderWidth: 3,
@@ -277,71 +384,140 @@ export default function ThreeScreen() {
                 </RNView>
               </GlassCard>
 
-              <GlassCard style={{ gap: 10 }}>
-                <Text style={styles.sectionTitle}>2) Concurso</Text>
+              {/* Divisor visual */}
+              <RNView style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.10)', marginVertical: 2 }} />
+
+              {/* Etapa 2: Concurso */}
+              <GlassCard style={{ gap: 14, padding: 18 }}>
+                <Text style={[styles.sectionTitle, { fontSize: 17 }]}>2) Concurso</Text>
                 <TextInput
                   value={contestText}
                   onChangeText={setContestText}
                   placeholder="Ex: 2790"
                   placeholderTextColor="rgba(255,255,255,0.55)"
                   keyboardType="number-pad"
-                  style={styles.input}
+                  style={[styles.input, { fontSize: 18, marginBottom: 2 }]}
                 />
                 <Text style={styles.note}>Digite o concurso em que você fez/apostou este jogo.</Text>
               </GlassCard>
 
-              <GlassCard style={{ gap: 10 }}>
-                <Text style={styles.sectionTitle}>3) Marque os números</Text>
+              {/* Divisor visual */}
+              <RNView style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.10)', marginVertical: 2 }} />
+
+              {/* Etapa 3: Números */}
+              <GlassCard style={{ gap: 14, padding: 18 }}>
+                <Text style={[styles.sectionTitle, { fontSize: 17 }]}>3) Marque os números</Text>
                 <Text style={styles.note}>
                   Selecione {requiredCount} números ({formatTwoDigits(minNumber)} a {formatTwoDigits(maxNumber)}).
                 </Text>
                 <Text style={styles.noteStrong}>
                   Selecionados: {selectedNumbers.length}/{requiredCount}
+                  {selectedNumbers.length < requiredCount && (
+                    <Text style={{ color: '#ef4444', fontWeight: '700' }}>  (Faltam {requiredCount - selectedNumbers.length})</Text>
+                  )}
                 </Text>
 
-                <RNView style={styles.grid}>
+                {/* Números selecionados visualmente */}
+                {selectedNumbers.length > 0 && (
+                  <RNView style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10, marginTop: 2 }}>
+                    {selectedNumbers.map((n) => (
+                      <NumberBall key={n} value={n} size={24} textColor="#fff" backgroundColor={config.hexColor} />
+                    ))}
+                  </RNView>
+                )}
+
+                {/* Botão desfazer */}
+                <RNView style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => setSelectedNumbers((prev) => prev.slice(0, -1))}
+                    disabled={selectedNumbers.length === 0}
+                    style={({ pressed }) => [{
+                      minHeight: 36,
+                      minWidth: 36,
+                      borderRadius: 18,
+                      backgroundColor: selectedNumbers.length === 0 ? 'rgba(255,255,255,0.10)' : '#64748b',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      opacity: pressed ? 0.7 : 1,
+                    }]}
+                  >
+                    <Text style={{ color: '#fff', fontWeight: '900', fontSize: 18 }}>↩</Text>
+                  </Pressable>
+                  <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 15 }}>Desfazer último número</Text>
+                </RNView>
+
+                <RNView style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'flex-start', paddingTop: 6 }}>
                   {numberList.map((n) => {
                     const sel = selectedNumbers.includes(n);
-                    const cellWidth = lotteryId === 'lotofacil' || lotteryId === 'lotomania' ? '19%' : '16%';
+                    const cellWidth = lotteryId === 'lotofacil' || lotteryId === 'lotomania' ? '18%' : '14%';
                     return (
                       <Pressable
                         key={n}
                         accessibilityRole="button"
                         onPress={() => toggleNumber(n)}
                         android_ripple={{ color: 'rgba(255,255,255,0.14)', borderless: false }}
-                        style={({ pressed }) => [
-                          styles.cell,
-                          { width: cellWidth },
-                          sel ? { backgroundColor: config.hexColor, borderColor: 'transparent' } : null,
-                          pressed
-                            ? {
-                                opacity: 0.92,
-                                backgroundColor: sel ? config.hexColor : 'rgba(255,255,255,0.12)',
-                              }
-                            : null,
-                        ]}
+                        style={({ pressed }) => [{
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: cellWidth,
+                          marginBottom: 8,
+                          opacity: pressed ? 0.8 : 1,
+                        }]}
+                        disabled={selectedNumbers.length >= requiredCount && !sel}
                       >
-                        <Text style={styles.cellText}>{formatTwoDigits(n)}</Text>
+                        <NumberBall
+                          value={n}
+                          size={28}
+                          textColor={sel ? '#fff' : '#0b1220'}
+                          backgroundColor={sel ? config.hexColor : undefined}
+                        />
                       </Pressable>
                     );
                   })}
                 </RNView>
 
+                {/* Mensagem de erro amigável */}
+                {selectedNumbers.length !== requiredCount && (
+                  <Text style={{ color: '#ef4444', fontWeight: '700', marginTop: 12, marginBottom: 2, textAlign: 'center' }}>
+                    Selecione {requiredCount} números para salvar.
+                  </Text>
+                )}
+                {(!contestText || isNaN(Number(contestText)) || Number(contestText) <= 0) && (
+                  <Text style={{ color: '#ef4444', fontWeight: '700', marginTop: 2, marginBottom: 2, textAlign: 'center' }}>
+                    Digite o número do concurso (ex: 2790).
+                  </Text>
+                )}
                 <Pressable
                   accessibilityRole="button"
                   onPress={saveManual}
                   android_ripple={{ color: 'rgba(0,0,0,0.12)', borderless: false }}
-                  style={({ pressed }) => [
-                    styles.saveManualButton,
-                    { backgroundColor: config.hexColor, opacity: pressed ? 0.9 : 1 },
-                  ]}
+                  style={({ pressed }) => [{
+                    marginTop: 28,
+                    marginBottom: 8,
+                    minHeight: 60,
+                    borderRadius: 20,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: selectedNumbers.length === requiredCount && contestText ? config.hexColor : 'rgba(255,255,255,0.18)',
+                    opacity: pressed ? 0.8 : 1,
+                    width: '100%',
+                    elevation: 2,
+                    shadowColor: '#000',
+                    shadowOpacity: 0.10,
+                    shadowRadius: 6,
+                    shadowOffset: { width: 0, height: 2 },
+                  }]}
+                  disabled={selectedNumbers.length !== requiredCount || !contestText}
                 >
-                  <Text style={styles.saveManualButtonText}>Salvar no Histórico</Text>
+                  <Text style={{ color: '#fff', fontWeight: '900', fontSize: 20, letterSpacing: 0.5 }}>
+                    Salvar no Histórico
+                  </Text>
                 </Pressable>
               </GlassCard>
             </ScrollView>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
     </View>
   );
