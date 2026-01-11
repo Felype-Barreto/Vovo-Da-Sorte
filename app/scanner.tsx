@@ -5,9 +5,11 @@ import { View as RNView, StyleSheet } from 'react-native';
 import { Text, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
-import { ensureMegaSenaDbUpToDate, getMegaSenaDrawByDateISO, getMegaSenaLatestDrawFromDb } from '@/src/megasena/sqlite';
+import { saveBet } from '@/src/megasena/bets-db';
+import { getLotteryDrawByDateISO } from '@/src/megasena/lottery-sqlite';
+import { getLotteryConfig } from '@/src/megasena/lotteryConfigs';
 import { countHits, parseCaixaQr } from '@/src/megasena/ticket';
-import type { MegaSenaDraw } from '@/src/megasena/types';
+import type { LotteryDraw, LotteryType } from '@/src/megasena/types';
 import { formatNumbers } from '@/src/megasena/weighted';
 
 export default function ScannerScreen() {
@@ -18,8 +20,9 @@ export default function ScannerScreen() {
 
   const [scanned, setScanned] = useState(false);
   const [raw, setRaw] = useState<string>('');
-  const [latestDraw, setLatestDraw] = useState<MegaSenaDraw | null>(null);
-  const [matchedDraw, setMatchedDraw] = useState<MegaSenaDraw | null>(null);
+  const [latestDraw, setLatestDraw] = useState<LotteryDraw | null>(null);
+  const [matchedDraw, setMatchedDraw] = useState<LotteryDraw | null>(null);
+  const [lotteryType, setLotteryType] = useState<LotteryType>('megasena');
 
   useEffect(() => {
     let alive = true;
@@ -45,20 +48,27 @@ export default function ScannerScreen() {
     };
   }, []);
 
+  // Detecta tipo de loteria pelo QR (base simples: quantidade de números)
   const parsed = useMemo(() => parseCaixaQr(raw), [raw]);
   const ticketNumbers = parsed.numbers;
   const ticketDate = parsed.dateISO;
+  useEffect(() => {
+    if (ticketNumbers.length === 15) setLotteryType('lotofacil');
+    else if (ticketNumbers.length === 5) setLotteryType('quina');
+    else if (ticketNumbers.length === 20) setLotteryType('lotomania');
+    else if (ticketNumbers.length === 6) setLotteryType('megasena');
+    else if (ticketNumbers.length === 6) setLotteryType('duplasena');
+    // Adapte para outros tipos se necessário
+  }, [ticketNumbers]);
 
   useEffect(() => {
     let alive = true;
-
     if (!ticketDate) {
       if (!alive) return;
       setMatchedDraw(latestDraw ?? null);
       return;
     }
-
-    getMegaSenaDrawByDateISO(ticketDate)
+    getLotteryDrawByDateISO(lotteryType, ticketDate)
       .then((d) => {
         if (!alive) return;
         setMatchedDraw(d);
@@ -67,16 +77,17 @@ export default function ScannerScreen() {
         if (!alive) return;
         setMatchedDraw(latestDraw ?? null);
       });
-
     return () => {
       alive = false;
     };
-  }, [ticketDate, latestDraw]);
+  }, [ticketDate, latestDraw, lotteryType]);
 
   const hits = useMemo(() => {
-    if (!matchedDraw || ticketNumbers.length !== 6) return null;
+    if (!matchedDraw) return null;
+    const config = getLotteryConfig(lotteryType);
+    if (ticketNumbers.length !== config.numbersPerDraw) return null;
     return countHits(ticketNumbers, matchedDraw.numbers);
-  }, [ticketNumbers, matchedDraw]);
+  }, [ticketNumbers, matchedDraw, lotteryType]);
 
   if (!permission) {
     return (
@@ -113,20 +124,30 @@ export default function ScannerScreen() {
         />
       </RNView>
 
-      <View style={[styles.card, { borderColor: colors.tabIconDefault }]}>
+      <View style={[styles.card, { borderColor: colors.tabIconDefault }]}> 
         <Text style={styles.cardTitle}>Bilhete</Text>
         <Text style={styles.value}>{ticketNumbers.length === 6 ? formatNumbers(ticketNumbers) : 'Não reconhecido'}</Text>
         {ticketDate && <Text style={styles.note}>Data extraída: {ticketDate}</Text>}
 
         <Text style={styles.cardTitle}>Sorteio correspondente</Text>
         <Text style={styles.value}>
-          {matchedDraw ? `Concurso ${matchedDraw.contest} (${matchedDraw.dateISO})` : 'Indisponível'}
+          {matchedDraw
+            ? `Concurso ${matchedDraw.contest} (${matchedDraw.dateISO})`
+            : ticketDate
+              ? 'Resultado ainda não disponível'
+              : 'Indisponível'}
         </Text>
         {matchedDraw && <Text style={styles.note}>{formatNumbers(matchedDraw.numbers)}</Text>}
 
         <Text style={styles.cardTitle}>Acertos</Text>
         <Text style={styles.value}>
-          {hits == null ? '—' : hits === 0 ? '0 (nenhum acerto)' : `${hits} ${hits === 1 ? 'número acertado' : 'números acertados'}`}
+          {matchedDraw && matchedDraw.numbers && hits != null
+            ? hits === 0
+              ? '0 (nenhum acerto)'
+              : `${hits} ${hits === 1 ? 'número acertado' : 'números acertados'}`
+            : ticketDate
+              ? 'Resultado ainda não disponível'
+              : '—'}
         </Text>
 
         {!!raw && (
@@ -134,6 +155,39 @@ export default function ScannerScreen() {
             QR: {raw}
           </Text>
         )}
+
+        {/* Botão de salvar no histórico */}
+        <View style={{ marginTop: 24, alignItems: 'center' }}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.button,
+              { backgroundColor: pressed ? '#059669' : '#10b981', width: '100%' },
+            ]}
+            onPress={async () => {
+              try {
+                if (!ticketNumbers.length || !lotteryType) {
+                  alert('Bilhete inválido.');
+                  return;
+                }
+                await saveBet({
+                  lotteryId: lotteryType,
+                  numbers: ticketNumbers,
+                  contest: matchedDraw?.contest,
+                  createdAt: Date.now(),
+                  costPerGame: 0,
+                  totalCost: 0,
+                  isPlayed: false,
+                });
+                alert('Bilhete salvo no histórico!');
+              } catch (e) {
+                alert('Erro ao salvar bilhete: ' + (e as Error).message);
+              }
+            }}
+            android_ripple={{ color: '#a7f3d0' }}
+          >
+            <Text style={[styles.buttonText, { color: '#fff', textAlign: 'center' }]}>Salvar no histórico</Text>
+          </Pressable>
+        </View>
       </View>
     </View>
   );

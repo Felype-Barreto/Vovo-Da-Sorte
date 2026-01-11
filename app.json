@@ -15,10 +15,11 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.trevo.inteligente",
+      "bundleIdentifier": "com.trevo.inteligente.testeads",
       "infoPlist": {
         "NSCameraUsageDescription": "Usamos a câmera para ler o código QR dos bilhetes de loteria e conferir seus números.",
-        "NSUserTrackingUsageDescription": "Usamos dados de rastreamento para exibir anúncios personalizados e melhorar sua experiência."
+        "NSUserTrackingUsageDescription": "Usamos dados de rastreamento para exibir anúncios personalizados e melhorar sua experiência.",
+        "ITSAppUsesNonExemptEncryption": false
       },
       "config": {
         "googleMobileAdsAppId": "ca-app-pub-1873423099734846~7668016615"
