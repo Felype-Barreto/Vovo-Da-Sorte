@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "891757061320",
+    "project_id": "trevo-inteligente",
+    "storage_bucket": "trevo-inteligente.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:891757061320:android:fb8c11b8dd0ed0ed8df1fd",
+        "android_client_info": {
+          "package_name": "com.trevo.inteligente"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCJH0LeNynKFHsHgsnpBLo5H5IvbbLPYrE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
