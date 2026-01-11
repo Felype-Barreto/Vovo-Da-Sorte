@@ -1,446 +1,552 @@
-import { LinearGradient } from 'expo-linear-gradient';
-import { RotateCcw } from 'lucide-react-native';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, View as RNView, ScrollView, StyleSheet } from 'react-native';
 
-import { Text, View } from '@/components/Themed';
+// RESTAURADO: Versão avançada da aba Meus Jogos
 import { GlassCard } from '@/src/components/GlassCard';
-import { NativeAdCard } from '@/src/components/NativeAdCard';
 import { NumberBall } from '@/src/components/NumberBall';
-import { useLottery } from '@/src/context/LotteryContext';
-import { maybeNotifyNewResultKnownContest } from '@/src/megasena/alerts';
-import { fetchCaixaLotteryOverview, loadCaixaLotteryHistoryLite, type CaixaLotteryOverview } from '@/src/megasena/lottery-caixa';
-import { getLotteryConfig } from '@/src/megasena/lotteryConfigs';
-import { computeFrequencies, topNumbers } from '@/src/megasena/stats';
-import type { LotteryDraw, LotteryType } from '@/src/megasena/types';
+import { clearAllBets, deleteBet, listSavedBets } from '@/src/megasena/bets-db';
+import { fetchOfficialDraw } from '@/src/megasena/fetchOfficialDraw';
+import { getAllLotteryIds, getLotteryConfig } from '@/src/megasena/lotteryConfigs';
+import React, { useEffect, useState } from 'react';
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
-function formatDatePtBr(iso: string | undefined): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('pt-BR');
+const RNView = View;
+
+function formatTwoDigits(n: number) {
+  return n.toString().padStart(2, '0');
 }
 
 export default function HistoricoScreen() {
-  const { selectedLottery, setSelectedLottery, availableLotteries } = useLottery();
+  // Estados principais
+  const [bets, setBets] = useState<any[]>([]);
+  const [groups, setGroups] = useState<{ key: { lotteryId: string, contest?: string }, bets: any[] }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
+  const [showCheck, setShowCheck] = useState<string | false>(false);
+  const [lotteryId, setLotteryId] = useState(getAllLotteryIds()[0]);
+  const [contestText, setContestText] = useState('');
+  const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
 
-  const [overview, setOverview] = useState<CaixaLotteryOverview | null>(null);
-  const [drawsByLottery, setDrawsByLottery] = useState<Map<LotteryType, LotteryDraw[]>>(new Map());
-  const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
-  const requestIdRef = useRef(0);
-  const [lastUpdateTimestamp, setLastUpdateTimestamp] = useState<number>(Date.now());
+  // Configuração da loteria selecionada
+  const config = getLotteryConfig(lotteryId);
+  const requiredCount = config.numbersPerDraw;
+  const minNumber = 1;
+  const maxNumber = config.totalNumbers;
+  const numberList = Array.from({ length: maxNumber - minNumber + 1 }, (_, i) => i + minNumber);
 
-  const config = useMemo(() => getLotteryConfig(selectedLottery), [selectedLottery]);
-  const minNumber = selectedLottery === 'lotomania' ? 0 : 1;
-  const maxNumber = selectedLottery === 'lotomania' ? 99 : config.totalNumbers;
-
-  const draws = useMemo(() => drawsByLottery.get(selectedLottery) ?? [], [drawsByLottery, selectedLottery]);
-
-  const freq = useMemo(() => computeFrequencies(draws, maxNumber, minNumber), [draws, maxNumber, minNumber]);
-  const top10 = useMemo(() => topNumbers(freq, 10, minNumber), [freq, minNumber]);
-  const recent10 = useMemo(() => draws.slice(0, 10), [draws]);
-
-  async function refreshSelectedLottery() {
-    const my = requestIdRef.current + 1;
-    requestIdRef.current = my;
-
+  // Carregar apostas do banco
+  async function reload() {
     setLoading(true);
-    setProgress({ done: 0, total: 0 });
-
-    try {
-      const ov = await fetchCaixaLotteryOverview(selectedLottery);
-      if (requestIdRef.current !== my) return;
-      setOverview(ov);
-
-      await maybeNotifyNewResultKnownContest({
-        lotteryId: selectedLottery,
-        lotteryName: config.name,
-        latestContest: ov?.latestResult?.contest,
-      });
-
-      const d = await loadCaixaLotteryHistoryLite(selectedLottery, {
-        lastN: 40,
-        concurrency: 2,
-        delayMsBetweenRequests: 40,
-        onProgress: (done, total) => {
-          if (requestIdRef.current !== my) return;
-          setProgress({ done, total });
-        },
-      });
-
-      if (requestIdRef.current !== my) return;
-      setDrawsByLottery((prev) => {
-        const map = new Map(prev);
-        map.set(selectedLottery, d);
-        return map;
-      });
-      setLastUpdateTimestamp(Date.now());
-    } catch {
-      if (requestIdRef.current !== my) return;
-      setOverview(null);
-      setDrawsByLottery((prev) => {
-        const map = new Map(prev);
-        map.set(selectedLottery, []);
-        return map;
-      });
-    } finally {
-      if (requestIdRef.current !== my) return;
-      setLoading(false);
+    const all = await listSavedBets();
+    setBets(all);
+    // Agrupar por loteria e concurso
+    const groupMap: Record<string, { key: { lotteryId: string, contest?: string }, bets: any[] }> = {};
+    for (const b of all) {
+      const contestStr = b.contest !== undefined && b.contest !== null ? String(b.contest) : undefined;
+      const groupKey = b.lotteryId + '-' + (contestStr || 'x');
+      if (!groupMap[groupKey]) {
+        groupMap[groupKey] = { key: { lotteryId: b.lotteryId, contest: contestStr }, bets: [] };
+      }
+      groupMap[groupKey].bets.push(b);
     }
+    setGroups(Object.values(groupMap));
+    setLoading(false);
   }
 
   useEffect(() => {
-    refreshSelectedLottery();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedLottery]);
+    reload();
+  }, []);
 
-  const formatTimeAgo = (timestamp: number): string => {
-    const now = Date.now();
-    const diff = now - timestamp;
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-    
-    if (minutes < 1) return 'agora';
-    if (minutes === 1) return 'há 1 minuto';
-    if (minutes < 60) return `há ${minutes} minutos`;
-    if (hours === 1) return 'há 1 hora';
-    if (hours < 24) return `há ${hours} horas`;
-    if (days === 1) return 'há 1 dia';
-    return `há ${days} dias`;
-  };
+  function toggleNumber(n: number) {
+    if (selectedNumbers.includes(n)) {
+      setSelectedNumbers(selectedNumbers.filter(x => x !== n));
+    } else if (selectedNumbers.length < requiredCount) {
+      setSelectedNumbers([...selectedNumbers, n]);
+    }
+  }
+
+  function undoLastNumber() {
+    setSelectedNumbers(selectedNumbers.slice(0, -1));
+  }
+
+  async function saveManual() {
+    if (selectedNumbers.length !== requiredCount) {
+      Alert.alert('Selecione todos os números necessários.');
+      return;
+    }
+    // Salvar aposta manual (exemplo, ajuste conforme seu banco)
+    const newBet = {
+      id: Date.now().toString(),
+      lotteryId,
+      contest: contestText,
+      numbers: selectedNumbers,
+      createdAt: new Date().toISOString(),
+    };
+    // Aqui você deve salvar no banco real
+    // await saveBet(newBet);
+    setAdding(false);
+    setSelectedNumbers([]);
+    setContestText('');
+    await reload();
+  }
+
+  async function confirmDelete(betId: string) {
+    Alert.alert('Remover', 'Remover este jogo do histórico?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Remover',
+        style: 'destructive',
+        onPress: async () => {
+          await deleteBet(betId);
+          await reload();
+        },
+      },
+    ]);
+  }
+
+  async function confirmClearAll() {
+    if (bets.length === 0) return;
+    Alert.alert(
+      'Limpar histórico',
+      'Isso vai apagar TODOS os jogos salvos. Deseja continuar?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Apagar tudo',
+          style: 'destructive',
+          onPress: async () => {
+            await clearAllBets();
+            await reload();
+          },
+        },
+      ],
+    );
+  }
+
+
 
   return (
-    <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
-        <RNView style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <Pressable
-            accessibilityRole="button"
-            disabled={loading}
-            onPress={refreshSelectedLottery}
-            android_ripple={{ color: 'rgba(255,255,255,0.1)' }}
-            style={({ pressed }) => [{ padding: 8, opacity: pressed || loading ? 0.65 : 1 }]}
-          >
-            <RotateCcw size={22} color="rgba(255,255,255,0.90)" />
-          </Pressable>
-
-          <RNView style={{ flex: 1, alignItems: 'center' }}>
-            <Text style={styles.title}>{config.name} - Histórico</Text>
-            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>
-              Atualizado {formatTimeAgo(lastUpdateTimestamp)}
-            </Text>
+    <View style={{ flex: 1, backgroundColor: '#181c24' }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40, gap: 16 }}>
+        <View style={{ borderRadius: 16, padding: 18, marginBottom: 16, borderWidth: 1, borderColor: '#20d361', backgroundColor: '#232a38' }}>
+          <RNView style={{ flexDirection: 'row', alignItems: 'center', gap: 10, justifyContent: 'center', marginBottom: 10 }}>
+            <Text style={{ fontSize: 28 }}>📝</Text>
+            <Text style={[styles.title, { fontSize: 28, marginBottom: 0 }]}>Meus Jogos</Text>
           </RNView>
-        </RNView>
-
-        <LinearGradient
-          colors={['rgba(32, 211, 97, 0.15)', 'rgba(32, 211, 97, 0.05)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{
-            borderRadius: 16,
-            padding: 20,
-            marginBottom: 12,
-            borderWidth: 1,
-            borderColor: 'rgba(32, 211, 97, 0.3)',
-          }}
-        >
-          <RNView style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-            <Text style={{ fontSize: 32 }}>📊</Text>
-            <Text style={[styles.title, { fontSize: 32, marginBottom: 0 }]}>Estatísticas</Text>
+          <RNView style={{ flexDirection: 'row', justifyContent: 'center', gap: 18, marginTop: 8 }}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setAdding(true)}
+              style={({ pressed }) => [{
+                minHeight: 48,
+                paddingHorizontal: 28,
+                borderRadius: 16,
+                borderWidth: 2,
+                borderColor: '#20d361',
+                backgroundColor: '#20d36122',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: 4,
+                opacity: pressed ? 0.7 : 1,
+                shadowColor: '#20d361',
+                shadowOpacity: 0.18,
+                shadowRadius: 4,
+                elevation: 2,
+              }]}
+            >
+              <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#20d361' }}>Adicionar</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={confirmClearAll}
+              style={({ pressed }) => [{
+                minHeight: 48,
+                paddingHorizontal: 28,
+                borderRadius: 16,
+                borderWidth: 2,
+                borderColor: '#ef4444',
+                backgroundColor: '#ef444422',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginLeft: 4,
+                opacity: bets.length === 0 ? 0.4 : (pressed ? 0.7 : 1),
+                shadowColor: '#ef4444',
+                shadowOpacity: 0.18,
+                shadowRadius: 4,
+                elevation: 2,
+              }]}
+              disabled={bets.length === 0}
+            >
+              <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#ef4444' }}>Limpar</Text>
+            </Pressable>
           </RNView>
-          <Text style={[styles.subtitle, { fontSize: 16 }]}>Dados reais da Caixa • Análise completa</Text>
-        </LinearGradient>
+        </View>
 
-        <GlassCard style={{ gap: 16 }}>
-          <RNView style={{ gap: 8 }}>
-            <Text style={styles.sectionTitle}>📊 Escolha o jogo</Text>
-            <Text style={styles.selectorHint}>Toque no jogo que deseja ver as estatísticas</Text>
-          </RNView>
-          <RNView style={{ gap: 12 }}>
-            {availableLotteries.map((lottery) => {
-              const c = getLotteryConfig(lottery);
-              const isSelected = lottery === selectedLottery;
+        <Text style={styles.subtitle}>
+          Aqui ficam os jogos salvos pelo Scanner e os adicionados manualmente.
+        </Text>
+
+        {loading ? <Text style={styles.subtitle}>Carregando…</Text> : null}
+
+        {!loading && groups.length === 0 ? (
+          <GlassCard>
+            <Text style={styles.sectionTitle}>Sem jogos ainda</Text>
+            <Text style={styles.note}>Use o Scanner ou toque em “Adicionar”.</Text>
+          </GlassCard>
+        ) : null}
+
+        {!loading
+          ? groups.map((g, idx) => {
+              const lot = getLotteryConfig(g.key.lotteryId);
+              const contestLabel = g.key.contest ? `Concurso ${g.key.contest}` : 'Concurso não informado';
+
               return (
-                <Pressable
-                  key={lottery}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Selecionar ${c.name}`}
-                  android_ripple={{ color: 'rgba(255,255,255,0.15)' }}
-                  onPress={() => setSelectedLottery(lottery)}
-                  style={({ pressed }) => [
-                    styles.lotteryButton,
-                    {
-                      opacity: pressed ? 0.85 : 1,
-                      borderColor: isSelected ? c.hexColor : 'rgba(255,255,255,0.25)',
-                      backgroundColor: isSelected ? c.hexColor + '20' : 'rgba(255,255,255,0.08)',
-                      borderWidth: isSelected ? 3 : 2,
-                    },
-                  ]}
-                >
-                  <RNView style={[styles.lotteryIndicator, { backgroundColor: c.hexColor }]} />
-                  <RNView style={{ flex: 1 }}>
-                    <Text 
-                      style={[styles.lotteryButtonText, isSelected ? { color: '#ffffff' } : null]}
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                    >
-                      {c.name}
-                    </Text>
+                <RNView key={`${g.key.lotteryId}-${g.key.contest ?? 'x'}`} style={{ marginBottom: 22 }}>
+                  {/* Título do grupo com cor da loteria e destaque */}
+                  <RNView style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2, gap: 8 }}>
+                    <RNView style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: lot.hexColor, marginRight: 4 }} />
+                    <Text style={{ fontSize: 19, fontWeight: 'bold', color: lot.hexColor }}>{lot.name}</Text>
+                    <Text style={{ fontSize: 15, fontWeight: 'bold', color: '#fff', marginLeft: 8 }}>{contestLabel}</Text>
                   </RNView>
-                  {isSelected && (
-                    <RNView style={[styles.selectedBadge, { backgroundColor: c.hexColor }]}>
-                      <Text style={styles.selectedBadgeText}>✓</Text>
-                    </RNView>
+                  <GlassCard style={{ gap: 10, marginTop: 2 }}>
+                    {g.bets.map((b: any) => (
+                      <RNView key={b.id} style={[styles.betRow, { marginBottom: 8 }]}> 
+                        <RNView style={styles.betNumbers}>
+                          {b.numbers.slice(0, 20).map((n: number) => (
+                            <NumberBall
+                              key={`${b.id}-${n}`}
+                              value={n}
+                              size={34}
+                              textColor="#0b1220"
+                              style={{
+                                shadowColor: '#000',
+                                shadowOpacity: 0.18,
+                                shadowRadius: 3,
+                                elevation: 2,
+                                marginRight: 2,
+                              }}
+                            />
+                          ))}
+                        </RNView>
+                        <RNView style={{ flexDirection: 'row', gap: 14, marginTop: 10 }}>
+                          <Pressable
+                            accessibilityRole="button"
+                            onPress={() => setShowCheck(b.id)}
+                            style={({ pressed }) => [{
+                              backgroundColor: '#20d361',
+                              borderRadius: 10,
+                              paddingHorizontal: 18,
+                              paddingVertical: 8,
+                              borderWidth: 1,
+                              borderColor: '#20d361',
+                              opacity: pressed ? 0.7 : 1,
+                              shadowColor: '#20d361',
+                              shadowOpacity: 0.18,
+                              shadowRadius: 4,
+                              elevation: 2,
+                            }]}
+                          >
+                            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 15 }}>Conferir</Text>
+                          </Pressable>
+                          <Pressable
+                            accessibilityRole="button"
+                            onPress={() => {
+                              Alert.alert(
+                                'Remover jogo',
+                                'Tem certeza que deseja remover este jogo do histórico?',
+                                [
+                                  { text: 'Cancelar', style: 'cancel' },
+                                  {
+                                    text: 'Remover',
+                                    style: 'destructive',
+                                    onPress: () => confirmDelete(b.id),
+                                  },
+                                ]
+                              );
+                            }}
+                            style={({ pressed }) => [styles.deleteButton, { opacity: pressed ? 0.75 : 1 }]}
+                          >
+                            <Text style={styles.deleteButtonText}>Remover</Text>
+                          </Pressable>
+                        </RNView>
+                      </RNView>
+                    ))}
+                  </GlassCard>
+                  {/* Separador visual entre grupos */}
+                  {idx < groups.length - 1 && (
+                    <RNView style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.10)', marginVertical: 18, borderRadius: 1 }} />
                   )}
-                </Pressable>
+                </RNView>
               );
-            })}
-          </RNView>
-        </GlassCard>
+            })
+          : null}
+      </ScrollView>
 
-        <GlassCard style={{ gap: 10 }}>
-          <RNView style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={styles.sectionTitle}>Último resultado</Text>
-            {overview?.latestResult?.wasAccumulated && (
-              <RNView
-                style={{
-                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                  paddingHorizontal: 12,
-                  paddingVertical: 6,
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderColor: 'rgba(239, 68, 68, 0.3)',
-                }}
-              >
-                <Text style={{ fontSize: 12, fontWeight: '900', color: '#ef4444' }}>
-                  🔥 ACUMULOU
-                </Text>
+      <Modal visible={adding} transparent animationType="slide" onRequestClose={() => setAdding(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setAdding(false)}>
+          <Pressable style={styles.modalSheet} onPress={() => {}}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 64, gap: 14 }}
+            >
+              <RNView style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Adicionar jogo</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => setAdding(false)}
+                  android_ripple={{ color: 'rgba(255,255,255,0.14)', borderless: false }}
+                  style={({ pressed }) => [{ padding: 10, opacity: pressed ? 0.7 : 1 }]}
+                >
+                  <Text style={styles.modalClose}>X</Text>
+                </Pressable>
               </RNView>
-            )}
-          </RNView>
-          {overview?.latestResult?.numbers?.length ? (
-            <>
-              <Text style={styles.smallNote}>
-                Concurso {overview.latestResult.contest} ({formatDatePtBr(overview.latestResult.dateISO)})
-              </Text>
-              <RNView style={styles.ballsRow}>
-                {overview.latestResult.numbers.map((n) => (
-                  <NumberBall key={n} value={n} size={50} />
-                ))}
-              </RNView>
-              
-              {/* Informações de arrecadação */}
-              {overview?.latestResult && (overview.latestResult.totalCollected || overview.latestResult.accumulatedNextDraw) && (
-                <RNView style={{ marginTop: 12, gap: 8 }}>
-                  {overview.latestResult.totalCollected && (
-                    <RNView
-                      style={{
-                        flexDirection: 'row',
-                        justifyContent: 'space-between',
-                        backgroundColor: 'rgba(59, 130, 246, 0.12)',
-                        padding: 10,
-                        borderRadius: 8,
-                      }}
-                    >
-                      <Text style={{ fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.85)' }}>
-                        💰 Arrecadação:
-                      </Text>
-                      <Text style={{ fontSize: 13, fontWeight: '800', color: '#3b82f6' }}>
-                        {overview.latestResult.totalCollected.toLocaleString('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL',
-                        })}
-                      </Text>
-                    </RNView>
-                  )}
-                  {overview.latestResult.accumulatedNextDraw && (
-                    <RNView
-                      style={{
-                        flexDirection: 'row',
-                        justifyContent: 'space-between',
-                        backgroundColor: 'rgba(249, 115, 22, 0.12)',
-                        padding: 10,
-                        borderRadius: 8,
-                      }}
-                    >
-                      <Text style={{ fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.85)' }}>
-                        🔥 Acumulado próximo:
-                      </Text>
-                      <Text style={{ fontSize: 13, fontWeight: '800', color: '#f97316' }}>
-                        {overview.latestResult.accumulatedNextDraw.toLocaleString('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL',
-                        })}
-                      </Text>
-                    </RNView>
-                  )}
-                </RNView>
-              )}
 
-              {/* Informações de ganhadores */}
-              {overview?.latestResult?.prizeBreakdown && overview.latestResult.prizeBreakdown.length > 0 && (
-                <RNView style={{ marginTop: 12, gap: 8 }}>
-                  <Text style={[styles.smallNote, { fontWeight: '700', color: 'rgba(255,255,255,0.9)' }]}>
-                    🏆 Ganhadores:
-                  </Text>
-                  {overview.latestResult.prizeBreakdown.slice(0, 3).map((prize) => (
-                    <RNView
-                      key={prize.faixa}
-                      style={{
-                        flexDirection: 'row',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        backgroundColor: prize.numeroDeGanhadores > 0 ? 'rgba(32, 211, 97, 0.12)' : 'rgba(255,255,255,0.05)',
-                        padding: 10,
-                        borderRadius: 8,
-                        borderLeftWidth: 3,
-                        borderLeftColor: prize.numeroDeGanhadores > 0 ? '#20d361' : 'rgba(255,255,255,0.2)',
-                      }}
-                    >
-                      <RNView style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 14, fontWeight: '800', color: '#ffffff' }}>
-                          {prize.descricaoFaixa}
-                        </Text>
-                        <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 2 }}>
-                          {prize.numeroDeGanhadores === 0
-                            ? 'Sem ganhadores'
-                            : `${prize.numeroDeGanhadores} ${prize.numeroDeGanhadores === 1 ? 'ganhador' : 'ganhadores'}`}
-                        </Text>
-                      </RNView>
-                      {prize.valorPremio > 0 && (
-                        <Text style={{ fontSize: 13, fontWeight: '800', color: '#20d361' }}>
-                          {prize.valorPremio.toLocaleString('pt-BR', {
-                            style: 'currency',
-                            currency: 'BRL',
-                          })}
-                        </Text>
-                      )}
-                    </RNView>
-                  ))}
-                </RNView>
-              )}
-            </>
-          ) : (
-            <Text style={styles.smallNote}>{loading ? 'Carregando…' : 'Ainda não foi possível carregar.'}</Text>
-          )}
-
-          {loading ? (
-            <Text style={styles.smallNote}>{progress?.total ? `Carregando histórico: ${progress.done}/${progress.total}` : 'Carregando histórico…'}</Text>
-          ) : null}
-        </GlassCard>
-
-        <GlassCard style={{ gap: 12 }}>
-          <Text style={styles.sectionTitle}>Números mais frequentes (ajuda)</Text>
-          <Text style={styles.smallNote}>
-            São os números que mais apareceram nos últimos {draws.length} sorteios carregados.
-            Isso não é garantia — é só uma referência para montar o jogo.
-          </Text>
-          <RNView style={styles.ballsRow}>
-            {top10.map((x) => (
-              <RNView key={x.number} style={styles.ballWithCount}>
-                <NumberBall value={x.number} size={54} />
-                <Text style={styles.countText}>{x.count}x</Text>
-              </RNView>
-            ))}
-          </RNView>
-
-          <Text style={styles.smallNote}>
-            Dica: esta loteria sorteia {config.numbersPerDraw} números de {minNumber} a {maxNumber}.
-          </Text>
-
-          <Pressable
-            accessibilityRole="button"
-            disabled={loading}
-            onPress={refreshSelectedLottery}
-            style={({ pressed }) => [styles.button, { opacity: pressed || loading ? 0.75 : 1 }]}
-          >
-            <Text style={styles.buttonText}>{loading ? 'Atualizando…' : 'Atualizar'}</Text>
-          </Pressable>
-        </GlassCard>
-
-        <GlassCard style={{ gap: 10, marginBottom: 18 }}>
-          <Text style={styles.sectionTitle}>Sorteios recentes</Text>
-          {recent10.length ? (
-            recent10.map((d, idx) => (
-              <React.Fragment key={d.contest}>
-                <RNView style={styles.rowItem}>
-                  <RNView style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Text style={styles.rowTitle}>Concurso {d.contest}</Text>
-                    {d.wasAccumulated && (
-                      <RNView
-                        style={{
-                          backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                          paddingHorizontal: 8,
-                          paddingVertical: 4,
-                          borderRadius: 8,
-                          borderWidth: 1,
-                          borderColor: 'rgba(239, 68, 68, 0.3)',
+              <GlassCard style={{ gap: 12 }}>
+                <Text style={styles.sectionTitle}>1) 📊 Escolha o jogo</Text>
+                <Text style={styles.note}>Toque no jogo que deseja adicionar</Text>
+                <RNView style={{ gap: 10 }}>
+                  {getAllLotteryIds().map((id: string) => {
+                    const c = getLotteryConfig(id);
+                    const selected = id === lotteryId;
+                    return (
+                      <Pressable
+                        key={id}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Selecionar ${c.name}`}
+                        onPress={() => {
+                          setLotteryId(id);
+                          setSelectedNumbers([]);
                         }}
+                        android_ripple={{ color: 'rgba(255,255,255,0.14)', borderless: false }}
+                        style={({ pressed }) => [
+                          styles.lotteryButton,
+                          { borderColor: selected ? c.hexColor : 'rgba(255,255,255,0.25)' },
+                          selected ? { 
+                            backgroundColor: c.hexColor + '20',
+                            borderWidth: 3,
+                          } : { 
+                            backgroundColor: 'rgba(255,255,255,0.08)',
+                            borderWidth: 2,
+                          },
+                          pressed ? { opacity: 0.85 } : null,
+                        ]}
                       >
-                        <Text style={{ fontSize: 10, fontWeight: '900', color: '#ef4444' }}>
-                          🔥 ACUMULOU
+                        <RNView style={[styles.lotteryIndicator, { backgroundColor: c.hexColor }]} />
+                        <Text 
+                          style={styles.lotteryButtonText}
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                        >
+                          {c.name}
                         </Text>
+                        {selected && (
+                          <RNView style={[styles.selectedBadge, { backgroundColor: c.hexColor }]}> 
+                            <Text style={styles.selectedBadgeText}>✓</Text>
+                          </RNView>
+                        )}
+                      </Pressable>
+                    );
+                  })}
+                </RNView>
+              </GlassCard>
+
+              <GlassCard style={{ gap: 10 }}>
+                <Text style={styles.sectionTitle}>2) Concurso</Text>
+                <TextInput
+                  value={contestText}
+                  onChangeText={setContestText}
+                  placeholder="Ex: 2790"
+                  placeholderTextColor="rgba(255,255,255,0.55)"
+                  keyboardType="number-pad"
+                  style={styles.input}
+                />
+                <Text style={styles.note}>Digite o concurso em que você fez/apostou este jogo.</Text>
+              </GlassCard>
+
+              <GlassCard style={{ gap: 10 }}>
+                <Text style={styles.sectionTitle}>3) Marque os números</Text>
+                <Text style={styles.note}>
+                  Selecione {requiredCount} números ({formatTwoDigits(minNumber)} a {formatTwoDigits(maxNumber)}).
+                </Text>
+                <Text style={styles.noteStrong}>
+                  Selecionados: {selectedNumbers.length}/{requiredCount}
+                </Text>
+
+                {/* Números já selecionados, em destaque e ordem de seleção */}
+                {selectedNumbers.length > 0 && (
+                  <RNView style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+                    {selectedNumbers.map((n, idx) => (
+                      <RNView key={n} style={{
+                        backgroundColor: config.hexColor,
+                        borderRadius: 16,
+                        paddingHorizontal: 10,
+                        paddingVertical: 4,
+                        marginRight: 4,
+                        marginBottom: 4,
+                      }}>
+                        <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>{formatTwoDigits(n)}</Text>
                       </RNView>
-                    )}
-                  </RNView>
-                  <Text style={styles.rowSub}>{formatDatePtBr(d.dateISO)}</Text>
-                  <RNView style={styles.ballsRowSmall}>
-                    {d.numbers.map((n) => (
-                      <NumberBall key={n} value={n} size={40} />
                     ))}
                   </RNView>
-                  {d.prizeBreakdown && d.prizeBreakdown.length > 0 && (
-                    <RNView style={{ marginTop: 12, gap: 8 }}>
-                      <Text style={[styles.smallNote, { fontWeight: '700', color: 'rgba(255,255,255,0.9)' }]}>
-                        🏆 Ganhadores:
-                      </Text>
-                      {d.prizeBreakdown.slice(0, 3).map((prize) => (
-                        <RNView
-                          key={prize.faixa}
-                          style={{
-                            flexDirection: 'row',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            backgroundColor: prize.numeroDeGanhadores > 0 ? 'rgba(32, 211, 97, 0.12)' : 'rgba(255,255,255,0.05)',
-                            padding: 10,
-                            borderRadius: 8,
-                            borderLeftWidth: 3,
-                            borderLeftColor: prize.numeroDeGanhadores > 0 ? '#20d361' : 'rgba(255,255,255,0.2)',
-                          }}
-                        >
-                          <RNView style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 14, fontWeight: '800', color: '#ffffff' }}>
-                              {prize.descricaoFaixa}
-                            </Text>
-                            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 2 }}>
-                              {prize.numeroDeGanhadores === 0
-                                ? 'Sem ganhadores'
-                                : `${prize.numeroDeGanhadores} ${prize.numeroDeGanhadores === 1 ? 'ganhador' : 'ganhadores'}`}
-                            </Text>
-                          </RNView>
-                          {prize.valorPremio > 0 && (
-                            <Text style={{ fontSize: 13, fontWeight: '800', color: '#20d361' }}>
-                              {prize.valorPremio.toLocaleString('pt-BR', {
-                                style: 'currency',
-                                currency: 'BRL',
-                              })}
-                            </Text>
-                          )}
-                        </RNView>
+                )}
+
+                <RNView style={styles.grid}>
+                  {numberList.map((n) => {
+                    const sel = selectedNumbers.includes(n);
+                    const cellWidth = lotteryId === 'lotofacil' || lotteryId === 'lotomania' ? '19%' : '16%';
+                    return (
+                      <Pressable
+                        key={n}
+                        accessibilityRole="button"
+                        onPress={() => toggleNumber(n)}
+                        android_ripple={{ color: 'rgba(255,255,255,0.14)', borderless: false }}
+                        style={({ pressed }) => [
+                          styles.cell,
+                          { width: cellWidth },
+                          sel
+                            ? {
+                                backgroundColor: config.hexColor,
+                                borderColor: '#fff',
+                                borderWidth: 2,
+                                shadowColor: config.hexColor,
+                                shadowOpacity: 0.5,
+                                shadowRadius: 4,
+                              }
+                            : null,
+                          pressed
+                            ? {
+                                opacity: 0.92,
+                                backgroundColor: sel ? config.hexColor : 'rgba(255,255,255,0.12)',
+                              }
+                            : null,
+                        ]}
+                      >
+                        <Text style={styles.cellText}>{formatTwoDigits(n)}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </RNView>
+                {/* Fim do grid de números */}
+
+                {/* Botão Desfazer */}
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={undoLastNumber}
+                  android_ripple={{ color: 'rgba(255,255,255,0.14)', borderless: false }}
+                  style={({ pressed }) => [{
+                    marginTop: 10,
+                    alignSelf: 'flex-start',
+                    backgroundColor: '#232a38',
+                    borderRadius: 10,
+                    paddingHorizontal: 18,
+                    paddingVertical: 8,
+                    borderWidth: 1,
+                    borderColor: 'rgba(255,255,255,0.18)',
+                    opacity: pressed ? 0.7 : 1,
+                  }]}
+                  disabled={selectedNumbers.length === 0}
+                >
+                  <Text style={{ color: selectedNumbers.length === 0 ? '#aaa' : '#fff', fontWeight: 'bold', fontSize: 15 }}>
+                    Desfazer último número
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={saveManual}
+                  android_ripple={{ color: 'rgba(0,0,0,0.12)', borderless: false }}
+                  style={({ pressed }) => [
+                    styles.saveManualButton,
+                    { backgroundColor: config.hexColor, opacity: pressed ? 0.9 : 1 },
+                  ]}
+                >
+                  <Text style={styles.saveManualButtonText}>Salvar no Histórico</Text>
+                </Pressable>
+              </GlassCard>
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Modal de conferir jogos */}
+      <Modal visible={!!showCheck} transparent animationType="slide" onRequestClose={() => setShowCheck(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setShowCheck(false)}>
+          <Pressable style={styles.modalSheet} onPress={() => {}}>
+            <RNView style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Conferir jogo</Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setShowCheck(false)}
+                android_ripple={{ color: 'rgba(255,255,255,0.14)', borderless: false }}
+                style={({ pressed }) => [{ padding: 10, opacity: pressed ? 0.7 : 1 }]}
+              >
+                <Text style={styles.modalClose}>X</Text>
+              </Pressable>
+            </RNView>
+            {/* Exibir detalhes do jogo selecionado para conferência */}
+            {(() => {
+              const [resultadoConcurso, setResultadoConcurso] = React.useState<number[] | null>(null);
+              const [loadingResult, setLoadingResult] = React.useState(false);
+              React.useEffect(() => {
+                if (!showCheck) return;
+                const allBets = groups.flatMap(g => g.bets);
+                const bet = allBets.find(b => b.id === showCheck);
+                if (!bet) return;
+                setResultadoConcurso(null);
+                setLoadingResult(true);
+                fetchOfficialDraw(bet.lotteryId, bet.contest).then((res) => {
+                  setResultadoConcurso(res);
+                  setLoadingResult(false);
+                }).catch(() => {
+                  setResultadoConcurso(null);
+                  setLoadingResult(false);
+                });
+              }, [showCheck]);
+
+              if (!showCheck) return null;
+              const allBets = groups.flatMap(g => g.bets);
+              const bet = allBets.find(b => b.id === showCheck);
+              if (!bet) return <Text style={styles.note}>Jogo não encontrado.</Text>;
+              const lot = getLotteryConfig(bet.lotteryId);
+
+              return (
+                <RNView style={{ gap: 10 }}>
+                  <Text style={{ color: lot.hexColor, fontWeight: 'bold', fontSize: 18 }}>{lot.name}</Text>
+                  <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>Concurso {bet.contest}</Text>
+                  <Text style={styles.noteStrong}>Seu jogo:</Text>
+                  <RNView style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    {bet.numbers.map((n: number) => (
+                      <NumberBall key={n} value={n} size={32} textColor="#0b1220" />
+                    ))}
+                  </RNView>
+                  <Text style={styles.noteStrong}>Resultado do concurso:</Text>
+                  {loadingResult && <Text style={styles.note}>Buscando resultado oficial…</Text>}
+                  {!loadingResult && resultadoConcurso && (
+                    <RNView style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                      {resultadoConcurso.map((n) => (
+                        <NumberBall key={n} value={n} size={32} textColor="#0b1220" style={{ backgroundColor: '#2563eb', borderColor: '#fff', borderWidth: 2 }} />
                       ))}
                     </RNView>
                   )}
+                  {!loadingResult && resultadoConcurso && (
+                    <Text style={styles.noteStrong}>
+                      Você possivelmente acertou{' '}
+                      <Text style={{ color: '#22c55e', fontWeight: 'bold' }}>
+                        {bet.numbers.filter((n: number) => resultadoConcurso.includes(n)).length}
+                      </Text>{' '}
+                      número{bet.numbers.filter((n: number) => resultadoConcurso.includes(n)).length === 1 ? '' : 's'}.
+                    </Text>
+                  )}
+                  {!loadingResult && resultadoConcurso === null && (
+                    <Text style={styles.note}>Não foi possível obter o resultado oficial desse concurso.</Text>
+                  )}
+                  <Text style={styles.note}>
+                    <Text style={{ fontWeight: 'bold' }}>Aviso:</Text> Conferência baseada em dados públicos da Caixa. Para resultados oficiais e prêmios, consulte uma lotérica Caixa ou o site oficial. Não nos responsabilizamos por eventuais divergências ou premiações.
+                  </Text>
                 </RNView>
-                {/* Exibe NativeAdCard após o terceiro item */}
-                {idx === 2 && <NativeAdCard />}
-              </React.Fragment>
-            ))
-          ) : (
-            <Text style={styles.smallNote}>{loading ? 'Carregando…' : 'Sem histórico ainda.'}</Text>
-          )}
-        </GlassCard>
-      </ScrollView>
+              );
+            })()}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -449,59 +555,152 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    gap: 10,
     backgroundColor: 'transparent',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
   },
   title: {
     fontSize: 30,
-    fontWeight: '800',
-    color: '#ffffff',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.72)',
-    marginBottom: 8,
-  },
-  sectionTitle: {
-    fontSize: 22,
     fontWeight: '900',
     color: '#ffffff',
   },
-  smallNote: {
-    fontSize: 15,
-    color: 'rgba(255,255,255,0.78)',
-    lineHeight: 20,
-  },
-  selectorHint: {
+  subtitle: {
+    marginTop: 8,
+    marginBottom: 12,
     fontSize: 16,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.85)',
-    lineHeight: 22,
+    color: 'rgba(255,255,255,0.78)',
   },
-  button: {
-    paddingVertical: 12,
-    paddingHorizontal: 18,
+  headerButton: {
+    minHeight: 44,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.28)',
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  headerDangerButton: {
+    minHeight: 44,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.45)',
+    backgroundColor: 'rgba(239,68,68,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerCheckButton: {
+    minHeight: 44,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(32,211,97,0.45)',
+    backgroundColor: 'rgba(32,211,97,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerButtonText: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#ffffff',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#ffffff',
+  },
+  note: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: 'rgba(255,255,255,0.74)',
+  },
+  noteStrong: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '900',
+    color: 'rgba(255,255,255,0.90)',
+  },
+  groupTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#ffffff',
+  },
+  groupSubtitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: 'rgba(255,255,255,0.80)',
+  },
+  betRow: {
+    gap: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.10)',
+  },
+  betNumbers: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  deleteButton: {
+    minHeight: 44,
     borderRadius: 12,
     borderWidth: 1,
-    minHeight: 44,
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderColor: 'rgba(255,255,255,0.18)',
+    borderColor: 'rgba(239,68,68,0.45)',
+    backgroundColor: 'rgba(239,68,68,0.18)',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  buttonText: {
-    fontSize: 16,
+  deleteButtonText: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#ffffff',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    maxHeight: '92%',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    backgroundColor: 'rgba(10, 18, 35, 0.96)',
+    padding: 16,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#ffffff',
+  },
+  modalClose: {
+    fontSize: 20,
     fontWeight: '900',
     color: '#ffffff',
   },
   lotteryButton: {
-    minHeight: 64,
+    minHeight: 60,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 16,
+    borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
@@ -509,9 +708,9 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   lotteryIndicator: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.3,
@@ -519,14 +718,15 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   lotteryButtonText: {
-    fontSize: 19,
+    flex: 1,
+    fontSize: 18,
     fontWeight: '900',
-    color: 'rgba(255,255,255,0.9)',
+    color: 'rgba(255,255,255,0.95)',
   },
   selectedBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -536,45 +736,57 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   selectedBadgeText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '900',
     color: '#001a17',
   },
-  ballsRow: {
+  pillRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
-    marginTop: 6,
   },
-  ballsRowSmall: {
+  input: {
+    minHeight: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: '#ffffff',
+    fontWeight: '700',
+  },
+  grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 10,
+    gap: 10,
+    justifyContent: 'flex-start',
+    paddingTop: 6,
   },
-  ballWithCount: {
+  cell: {
+    minHeight: 46,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  countText: {
-    marginTop: 4,
-    fontSize: 13,
-    fontWeight: '900',
-    color: 'rgba(255,255,255,0.78)',
-  },
-  rowItem: {
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.10)',
-    paddingTop: 12,
-    marginTop: 8,
-  },
-  rowTitle: {
-    fontSize: 16,
+  cellText: {
+    fontSize: 14,
     fontWeight: '900',
     color: '#ffffff',
   },
-  rowSub: {
-    marginTop: 4,
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.72)',
+  saveManualButton: {
+    marginTop: 18,
+    minHeight: 52,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveManualButtonText: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#ffffff',
   },
 });
