@@ -1,7 +1,7 @@
 import { useAdDisplay } from '@/src/ads/AdDisplayContext';
 import { showInterstitialIfAllowed } from '@/src/ads/interstitialAd';
 import { Tabs, usePathname, useRouter } from 'expo-router';
-import { Archive, BarChart2, Home, Scan, Settings, Star } from 'lucide-react-native';
+import { Archive, BarChart2, Home, Settings, Star } from 'lucide-react-native';
 import React, { useEffect, useRef } from 'react';
 
 
@@ -49,7 +49,7 @@ export default function TabLayout() {
       {/* <Tabs.Screen name="three" ... /> removido, rota não existe */}
         <Tabs.Screen name="estatistica" options={{ title: 'Estatística', tabBarIcon: ({ color }) => <BarChart2 color={color} size={26} /> }} />
         <Tabs.Screen name="historico" options={{ title: 'Histórico', tabBarIcon: ({ color }) => <Archive color={color} size={26} /> }} />
-      <Tabs.Screen name="scanner" options={{ title: 'Scanner', tabBarIcon: ({ color }) => <Scan color={color} size={26} /> }} />
+      {/* <Tabs.Screen name="scanner" options={{ title: 'Scanner', tabBarIcon: ({ color }) => <Scan color={color} size={26} /> }} /> */}
       <Tabs.Screen name="config" options={{ title: 'Config', tabBarIcon: ({ color }) => <Settings color={color} size={26} /> }} />
       {/* Ocultar todas as outras tabs extras do menu */}
       {/* Abas ocultas removidas para otimizar o app */}

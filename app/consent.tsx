@@ -116,7 +116,7 @@ export default function ConsentScreen() {
         {/* Introdução Amigável */}
         <View style={{ backgroundColor: 'rgba(32, 211, 97, 0.1)', borderRadius: 16, padding: 20, borderWidth: 1, borderColor: 'rgba(32, 211, 97, 0.3)' }}>
           <Text style={{ fontSize: 18, fontWeight: '700', color: '#20d361', marginBottom: 12 }}>
-            👋 Bem-vindo ao Trevo Inteligente!
+            👴 Bem-vindo ao Vovô da Sorte!
           </Text>
           <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.85)', lineHeight: 22 }}>
             Antes de começar, precisamos do seu consentimento para algumas coisas importantes. Leia com calma e escolha o que é melhor para você.

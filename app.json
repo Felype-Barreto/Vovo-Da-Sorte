@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Trevo Inteligente",
+    "name": "Vovô da Sorte",
     "slug": "trevo-inteligente",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash-icon.png",
+      "image": "./assets/images/mascote-vovo.png",
       "resizeMode": "contain",
       "backgroundColor": "#1a1a1a"
     },

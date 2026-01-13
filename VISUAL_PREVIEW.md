@@ -1,22 +1,22 @@
-# 📱 Trevo Inteligente - Visualização em Diferentes Plataformas
+# Vovô da Sorte - Visualização em Diferentes Plataformas
 
-## 🍎 iOS App Store
+## iOS App Store
 
 ### App Store Listing
 ```
 ┌────────────────────────────────────────────┐
 │                                            │
-│              ☘️ ÍCONE 1024x1024            │
-│         (Gradiente Verde Moderno)          │
+│           ÍCONE 1024x1024 (mascote)        │
+│         Fundo branco, mascote central       │
 │                                            │
-│  Trevo Inteligente                        │
-│  ★★★★★ (5.0) - 1.2K reviews              │
+│  Vovô da Sorte                             │
+│  5 estrelas - 1.2K avaliações              │
 │                                            │
-│  Seu assistente inteligente para análise  │
-│  de loterias. Descubra padrões, gere     │
-│  apostas e gerencie bolões com segurança │
+│  O seu guia para sorte nas loterias.        │
+│  Descubra padrões, gere apostas,            │
+│  acompanhe resultados e estatísticas.       │
 │                                            │
-│  [OBTER]  [Compartilhar]                 │
+│  [OBTER]  [Compartilhar]                   │
 │                                            │
 └────────────────────────────────────────────┘
 ```
@@ -28,9 +28,8 @@
 ├──────────────────────┤
 │                      │
 │   ┌────────────┐     │
-│   │     ☘️     │     │
-│   │   Trevo    │     │
-│   │ Inteligente│     │
+│   │ Mascote    │     │
+│   │ Vovô da Sorte │  │
 │   └────────────┘     │
 │                      │
 │   ┌────────────┐     │
@@ -44,33 +43,34 @@
 ### Dock (iOS)
 ```
 ┌────────────────────────────┐
-│  [Mail] [Safari] [☘️] [Music] │
+│  [Mail] [Safari] [Vovô] [Music] │
 │                            │
-│  "Trevo Inteligente"       │
-│   quando você passa mouse   │
+│  "Vovô da Sorte"           │
+│   ao passar o mouse        │
 └────────────────────────────┘
 ```
 
 ---
 
-## 🤖 Android Play Store
+## Android Play Store
 
 ### Google Play Listing
 ```
 ┌─────────────────────────────────────┐
 │                                     │
-│         [☘️ Ícone 512x512]          │
+│         [Ícone mascote 512x512]     │
 │                                     │
-│  Trevo Inteligente                 │
-│  ★★★★★ (4.8) - 856 reviews        │
+│  Vovô da Sorte                      │
+│  5 estrelas - 856 avaliações        │
 │                                     │
-│  Analyst inteligente de loterias   │
-│  Veja padrões, escaneie bilhetes   │
+│  Seu consultor de loterias          │
+│  Veja padrões, estatísticas,        │
+│  acompanhe resultados e dicas       │
 │                                     │
-│  [INSTALAR] [Abrir]                │
+│  [INSTALAR] [Abrir]                 │
 │                                     │
 │  Screenshots:                       │
-│  [1] [2] [3] [4] [5]               │
+│  [1] [2] [3] [4] [5]                │
 │                                     │
 └─────────────────────────────────────┘
 ```
@@ -81,12 +81,12 @@
 │   Status Bar         │
 ├──────────────────────┤
 │                      │
-│  ☘️  Trevo Inteligente
+│  Vovô da Sorte       │
 │                      │
-│  ☘️  Trevo Inteligente
+│  Vovô da Sorte       │
 │                      │
 │  [Bottom Nav Bar]    │
-│  🏠 📊 🔍 👥 ⚙️     │
+│  Início  Estatísticas  Scanner  Perfil  Configurações │
 │                      │
 └──────────────────────┘
 ```
@@ -96,27 +96,27 @@
 ┌──────────────────────────┐
 │  Instaladas              │
 │                          │
-│  [☘️] Trevo Inteligente  │
-│  [📱] Telefone           │
-│  [📸] Câmera             │
-│  [💬] Mensagens          │
+│  [Vovô] Vovô da Sorte    │
+│  [Telefone] Telefone     │
+│  [Câmera] Câmera         │
+│  [Mensagens] Mensagens   │
 │                          │
 └──────────────────────────┘
 ```
 
 ---
 
-## 🌐 Web (Progressive Web App)
+## Web (Progressive Web App)
 
 ### Browser Tab
 ```
 ┌─────────────────────────────────────────┐
-│ [◄][►][🔄] trevointeligente.com    [⋮] │
+│ [◄][►][Atualizar] vovodasorte.com   [Menu] │
 │                                         │
-│   ☘️ Trevo Inteligente                │
-│   https://trevointeligente.com          │
+│   Vovô da Sorte                         │
+│   https://vovodasorte.com               │
 │                                         │
-│   Seu assistente de loterias           │
+│   Seu consultor de loterias             │
 │                                         │
 │   [Adicionar à Tela] [Compartilhar]    │
 │                                         │

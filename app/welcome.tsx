@@ -80,13 +80,14 @@ export default function WelcomeScreen() {
           justifyContent: 'space-between',
         }}>
         {/* Header */}
-        <View style={{ gap: 16 }}>
+        <View style={{ gap: 16, alignItems: 'center' }}>
           <Text style={{ fontSize: 24, fontWeight: '300', color: 'rgba(255,255,255,0.70)' }}>Bem-vindo ao</Text>
           <Text style={{ fontSize: 42, fontWeight: '900', color: '#ffffff', lineHeight: 52 }}>
-            Trevo Inteligente
+            Vovô da Sorte
           </Text>
-          <Text style={{ fontSize: 18, fontWeight: '500', color: 'rgba(255,255,255,0.78)', lineHeight: 26 }}>
-            Acompanhe os resultados, descubra quais números saem mais e crie seus jogos com segurança.
+          <Image source={require('../assets/images/logo-horizontal.png')} style={{ width: 220, height: 80, resizeMode: 'contain', marginBottom: 8 }} />
+          <Text style={{ fontSize: 18, fontWeight: '500', color: 'rgba(255,255,255,0.78)', lineHeight: 26, textAlign: 'center' }}>
+            Confira resultados, veja estatísticas e receba dicas do Vovô para apostar melhor!
           </Text>
         </View>
 

@@ -12,7 +12,7 @@ let appStateSubscription: any = null;
  * 
  * Mostra anúncio quando o app retorna ao foreground
  * - Respeitoso: não mostra se usuário não consentiu
- * - Inteligente: cooldown entre exibições
+ * - Vovô da Sorte: cooldown entre exibições
  * - Suave: não interrompe fluxos críticos
  */
 

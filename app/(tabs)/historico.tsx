@@ -5,7 +5,7 @@ import { clearAllBets, deleteBet, listSavedBets } from '@/src/megasena/bets-db';
 import { fetchOfficialDraw } from '@/src/megasena/fetchOfficialDraw';
 import { getAllLotteryIds, getLotteryConfig } from '@/src/megasena/lotteryConfigs';
 import React, { useEffect, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 const RNView = View;
 
@@ -127,8 +127,8 @@ export default function HistoricoScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40, gap: 16 }}>
         <View style={{ borderRadius: 16, padding: 18, marginBottom: 16, borderWidth: 1, borderColor: '#20d361', backgroundColor: '#232a38' }}>
           <RNView style={{ flexDirection: 'row', alignItems: 'center', gap: 10, justifyContent: 'center', marginBottom: 10 }}>
-            <Text style={{ fontSize: 28 }}>📝</Text>
-            <Text style={[styles.title, { fontSize: 28, marginBottom: 0 }]}>Meus Jogos</Text>
+            <Image source={require('../../assets/images/mascote-vovo.png')} style={{ width: 44, height: 44, borderRadius: 22, marginRight: 6 }} />
+            <Text style={[styles.title, { fontSize: 28, marginBottom: 0 }]}>Jogos do Vovô</Text>
           </RNView>
           <RNView style={{ flexDirection: 'row', justifyContent: 'center', gap: 18, marginTop: 8 }}>
             <Pressable

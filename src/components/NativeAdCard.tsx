@@ -25,7 +25,7 @@ export const NativeAdCard: React.FC<NativeAdCardProps> = ({
   const { consentGiven, adsConsent } = useConsent();
 
   // Só mostra se tudo estiver ok
-  if (!isAdTypeEnabled('banner') || !consentGiven || !adsConsent || !enabled) {
+  if (!isAdTypeEnabled('native') || !consentGiven || !adsConsent || !enabled) {
     return null;
   }
 

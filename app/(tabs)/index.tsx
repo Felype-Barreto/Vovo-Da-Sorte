@@ -8,7 +8,7 @@ import { fetchCaixaLotteryOverview } from '@/src/megasena/lottery-caixa';
 import { getAllLotteryConfigs } from '@/src/megasena/lotteryConfigs';
 import { Award, Info } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 
 let BannerAd, BannerAdSize;
 try {
@@ -96,11 +96,12 @@ function HomeScreen() {
         <View style={{ marginBottom: 16 }}>
           <GlassCard style={{ borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.08)', padding: 18 }}>
             <View style={{ flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-              <Text style={{ color: '#fff', fontSize: 26, fontWeight: 'bold', marginBottom: 6 }}>🍀 Trevo Inteligente</Text>
-              <Text style={{ color: '#e0ffe0', fontSize: 15, fontWeight: '500', marginBottom: 2 }}>Seu assistente pessoal de loterias</Text>
+              <Text style={{ color: '#fff', fontSize: 26, fontWeight: 'bold', marginBottom: 6 }}>Vovô da Sorte</Text>
+              <Text style={{ color: '#e0ffe0', fontSize: 15, fontWeight: '500', marginBottom: 2 }}>Seu companheiro simpático de loterias</Text>
               <Text style={{ color: '#b2ffb2', fontSize: 13, marginBottom: 2 }}>
                 Página atualizada {formatTimeAgo(lastUpdate)}
               </Text>
+              <Image source={require('../../assets/images/logo-horizontal.png')} style={{ width: 220, height: 80, resizeMode: 'contain', marginBottom: 12 }} />
               <Pressable
                 onPress={fetchAll}
                 style={({ pressed }) => [{

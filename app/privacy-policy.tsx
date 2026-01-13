@@ -60,7 +60,7 @@ export default function PrivacyPolicyScreen() {
             Introdução
           </Text>
           <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.75)', lineHeight: 22, marginBottom: 12 }}>
-            O aplicativo <Text style={{ fontWeight: 'bold', color: '#20d361' }}>Trevo Inteligente</Text> respeita a sua privacidade e está comprometido em proteger seus dados pessoais.
+            O aplicativo <Text style={{ fontWeight: 'bold', color: '#20d361' }}>Vovô da Sorte</Text> respeita a sua privacidade e está comprometido em proteger seus dados pessoais.
           </Text>
           <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.75)', lineHeight: 22 }}>
             Esta Política de Privacidade explica como coletamos, usamos, armazenamos e protegemos suas informações, em conformidade com a <Text style={{ fontWeight: 'bold' }}>LGPD</Text> (Lei nº 13.709/2018) e o <Text style={{ fontWeight: 'bold' }}>GDPR</Text> (Regulamento Geral sobre a Proteção de Dados).
@@ -245,7 +245,7 @@ export default function PrivacyPolicyScreen() {
           </Text>
           <View style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
             <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.75)', lineHeight: 20 }}>
-              📧 Email: suporte@trevointeligente.com.br
+              📧 Email: suporte@vovodasorte.com.br
             </Text>
             <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.75)', lineHeight: 20, marginTop: 4 }}>
               📱 App: Seção "Configurações" → "Privacidade"

@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { RotateCcw } from 'lucide-react-native';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, View as RNView, ScrollView, StyleSheet } from 'react-native';
+import { Image, Pressable, View as RNView, ScrollView, StyleSheet } from 'react-native';
 
 import { Text, View } from '@/components/Themed';
 import { GlassCard } from '@/src/components/GlassCard';
@@ -146,8 +146,8 @@ export default function HistoricoScreen() {
           }}
         >
           <RNView style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-            <Text style={{ fontSize: 32 }}>📊</Text>
-            <Text style={[styles.title, { fontSize: 32, marginBottom: 0 }]}>Estatísticas</Text>
+            <Image source={require('../../assets/images/mascote-vovo.png')} style={{ width: 44, height: 44, borderRadius: 22, marginRight: 6 }} />
+            <Text style={[styles.title, { fontSize: 24, marginBottom: 0 }]}>Estatísticas do Vovô</Text>
           </RNView>
           <Text style={[styles.subtitle, { fontSize: 16 }]}>Dados reais da Caixa • Análise completa</Text>
         </LinearGradient>
@@ -155,7 +155,7 @@ export default function HistoricoScreen() {
         <GlassCard style={{ gap: 16 }}>
           <RNView style={{ gap: 8 }}>
             <Text style={styles.sectionTitle}>📊 Escolha o jogo</Text>
-            <Text style={styles.selectorHint}>Toque no jogo que deseja ver as estatísticas</Text>
+            <Text style={styles.selectorHint}>Toque no jogo para ver as estatísticas do Vovô</Text>
           </RNView>
           <RNView style={{ gap: 12 }}>
             {availableLotteries.map((lottery) => {

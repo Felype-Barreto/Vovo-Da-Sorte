@@ -6,7 +6,7 @@ import { ensureNotificationsPermission } from '@/src/megasena/alerts';
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 export default function ConfigScreen() {
   const {
@@ -81,7 +81,10 @@ export default function ConfigScreen() {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <ThemedText style={styles.title}>Configurações</ThemedText>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+            <Image source={require('../../assets/images/mascote-vovo.png')} style={{ width: 36, height: 36, borderRadius: 18 }} />
+            <ThemedText style={styles.title}>Configurações do Vovô</ThemedText>
+          </View>
           <ThemedText style={styles.subtitle}>Controle de conexão, privacidade e dados.</ThemedText>
         </View>
 

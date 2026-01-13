@@ -26,7 +26,7 @@ export const isAdEnabled = true; // ← Ativado para exibir anúncios
  * 
  * Como obter:
  * 1. Vá a: https://admob.google.com
- * 2. Crie um app (Bundle: com.trevoInteligente)
+ * 2. Crie um app (Bundle: com.vovodasorte)
  * 3. Crie os ad units (Banner e Interstitial)
  * 4. Copie os Unit IDs abaixo
  * 
@@ -39,13 +39,11 @@ export const AD_UNIT_IDS = {
   // iOS - IDs DE TESTE OFICIAIS DO ADMOB
   BANNER_iOS: 'ca-app-pub-3940256099942544/2934735716',
   INTERSTITIAL_iOS: 'ca-app-pub-3940256099942544/4411468910',
-  REWARDED_iOS: 'ca-app-pub-3940256099942544/1712485313',
   NATIVE_iOS: 'ca-app-pub-3940256099942544/3986624511',
 
   // Android - IDs DE TESTE OFICIAIS DO ADMOB
   BANNER_ANDROID: 'ca-app-pub-3940256099942544/6300978111',
   INTERSTITIAL_ANDROID: 'ca-app-pub-3940256099942544/1033173712',
-  REWARDED_ANDROID: 'ca-app-pub-3940256099942544/5224354917',
   NATIVE_ANDROID: 'ca-app-pub-3940256099942544/2247696110',
 };
 
@@ -91,15 +89,11 @@ export const adBehavior = {
   // Banners (sempre seguro)
   showBannerAds: true, // Fixo no rodapé
   bannerHeight: 50, // Altura padrão
-  
-  // Intersticiais (cuidado!)
-  showInterstitials: false, // Desativado por padrão (intrusivo)
-  interstitialFrequency: 0, // A cada X telas (0 = nunca)
-  
-  // Anúncios de Recompensa (melhor para idosos)
-  showRewardedAds: true, // Opt-in do usuário
-  rewardValue: 'Acesso por 24h', // O que o usuário "ganha"
-  
+  // Intersticiais
+  showInterstitials: true, // Ativado
+  interstitialFrequency: 3, // Exibe a cada 3 trocas de aba
+  // Native Ads
+  showNativeAds: true,
   // Mute automático
   muteAdsAudio: true, // Sem som automático
 };
@@ -110,8 +104,8 @@ export const adBehavior = {
 
 export const APP_CONFIG = {
   appId: 'ca-app-pub-xxxxxxxxxxxxxxxx~zzzzzzzzzz', // Seu App ID do AdMob
-  bundleId: 'com.trevoInteligente',
-  appName: 'Trevo Inteligente',
+  bundleId: 'com.vovodasorte',
+  appName: 'Vovô da Sorte',
 };
 
 // ========================================
@@ -121,7 +115,7 @@ export const APP_CONFIG = {
 /**
  * Obter Unit ID apropriado (iOS/Android)
  */
-export const getAdUnitId = (adType: 'banner' | 'interstitial' | 'rewarded' | 'native') => {
+export const getAdUnitId = (adType: 'banner' | 'interstitial' | 'native') => {
   // Using Platform.OS keeps this correct at runtime without affecting bundling.
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { Platform } = require('react-native');
@@ -131,8 +125,6 @@ export const getAdUnitId = (adType: 'banner' | 'interstitial' | 'rewarded' | 'na
     return isIOS ? AD_UNIT_IDS.BANNER_iOS : AD_UNIT_IDS.BANNER_ANDROID;
   } else if (adType === 'interstitial') {
     return isIOS ? AD_UNIT_IDS.INTERSTITIAL_iOS : AD_UNIT_IDS.INTERSTITIAL_ANDROID;
-  } else if (adType === 'rewarded') {
-    return isIOS ? AD_UNIT_IDS.REWARDED_iOS : AD_UNIT_IDS.REWARDED_ANDROID;
   } else if (adType === 'native') {
     return isIOS ? AD_UNIT_IDS.NATIVE_iOS : AD_UNIT_IDS.NATIVE_ANDROID;
   }
@@ -150,16 +142,15 @@ export const areAdsEnabled = (): boolean => {
 /**
  * Verificar se tipo específico de ad está ativado
  */
-export const isAdTypeEnabled = (adType: 'banner' | 'interstitial' | 'rewarded'): boolean => {
+export const isAdTypeEnabled = (adType: 'banner' | 'interstitial' | 'native'): boolean => {
   if (!isAdEnabled) return false;
-  
   switch (adType) {
     case 'banner':
       return adBehavior.showBannerAds;
     case 'interstitial':
       return adBehavior.showInterstitials;
-    case 'rewarded':
-      return adBehavior.showRewardedAds;
+    case 'native':
+      return adBehavior.showNativeAds;
     default:
       return false;
   }
