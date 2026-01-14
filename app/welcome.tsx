@@ -7,7 +7,7 @@ import type { MegaSenaDraw } from '@/src/megasena/types';
 import { router } from 'expo-router';
 import { BarChart3, Info, QrCode, Users } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 
 /**
  * Tela de Bem-vindo
@@ -82,8 +82,9 @@ export default function WelcomeScreen() {
         {/* Header */}
         <View style={{ gap: 16, alignItems: 'center' }}>
           <Text style={{ fontSize: 24, fontWeight: '300', color: 'rgba(255,255,255,0.70)' }}>Bem-vindo ao</Text>
-          <Text style={{ fontSize: 42, fontWeight: '900', color: '#ffffff', lineHeight: 52 }}>
-            Vovô da Sorte
+          <Text style={{ fontSize: 42, fontWeight: '900', lineHeight: 52 }}>
+            <Text style={{ color: '#20d361' }}>Vovô</Text>
+            <Text style={{ color: '#ffd700' }}> da Sorte</Text>
           </Text>
           <Image source={require('../assets/images/logo-horizontal.png')} style={{ width: 220, height: 80, resizeMode: 'contain', marginBottom: 8 }} />
           <Text style={{ fontSize: 18, fontWeight: '500', color: 'rgba(255,255,255,0.78)', lineHeight: 26, textAlign: 'center' }}>

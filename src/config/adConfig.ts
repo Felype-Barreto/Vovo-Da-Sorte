@@ -36,15 +36,15 @@ export const isAdEnabled = true; // ← Ativado para exibir anúncios
 // Banner Ads (rodapé da tela)
 // IMPORTANTE: IDs REAIS de PRODUÇÃO do AdMob
 export const AD_UNIT_IDS = {
-  // iOS - IDs DE TESTE OFICIAIS DO ADMOB
+  // iOS - IDs DE TESTE OFICIAIS DO ADMOB (troque se tiver IDs reais de iOS)
   BANNER_iOS: 'ca-app-pub-3940256099942544/2934735716',
   INTERSTITIAL_iOS: 'ca-app-pub-3940256099942544/4411468910',
   NATIVE_iOS: 'ca-app-pub-3940256099942544/3986624511',
 
-  // Android - IDs DE TESTE OFICIAIS DO ADMOB
-  BANNER_ANDROID: 'ca-app-pub-3940256099942544/6300978111',
-  INTERSTITIAL_ANDROID: 'ca-app-pub-3940256099942544/1033173712',
-  NATIVE_ANDROID: 'ca-app-pub-3940256099942544/2247696110',
+  // Android - IDs REAIS DO ADMOB
+  BANNER_ANDROID: 'ca-app-pub-1873423099734846/6810230513',
+  INTERSTITIAL_ANDROID: 'ca-app-pub-1873423099734846/2915395144',
+  NATIVE_ANDROID: 'ca-app-pub-1873423099734846/6075733349',
 };
 
 // ========================================
@@ -103,8 +103,8 @@ export const adBehavior = {
 // ========================================
 
 export const APP_CONFIG = {
-  appId: 'ca-app-pub-xxxxxxxxxxxxxxxx~zzzzzzzzzz', // Seu App ID do AdMob
-  bundleId: 'com.vovodasorte',
+  appId: 'ca-app-pub-1873423099734846~7668016615', // Seu App ID do AdMob
+  bundleId: 'com.vovodasorte.app',
   appName: 'Vovô da Sorte',
 };
 
