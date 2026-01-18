@@ -1,26 +1,36 @@
 {
   "project_info": {
-    "project_number": "891757061320",
-    "project_id": "trevo-inteligente",
-    "storage_bucket": "trevo-inteligente.firebasestorage.app"
+    "project_number": "1038608891378",
+    "project_id": "vovo-da-sorte",
+    "storage_bucket": "vovo-da-sorte.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:891757061320:android:fb8c11b8dd0ed0ed8df1fd",
+        "mobilesdk_app_id": "1:1038608891378:android:9d7735fb9ec6611b71ff6b",
         "android_client_info": {
-          "package_name": "com.vovo.sorte"
+          "package_name": "com.vovodasorte.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1038608891378-eenp58v9gpir6amcc4sscl34usufvvku.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyCJH0LeNynKFHsHgsnpBLo5H5IvbbLPYrE"
+          "current_key": "AIzaSyDDj0pSIwuWf5-N0wJZIy2-m2iaP0WhBVw"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1038608891378-eenp58v9gpir6amcc4sscl34usufvvku.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

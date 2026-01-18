@@ -4,7 +4,11 @@ import { getUpcomingSpecialContests } from '@/src/megasena/special-contests';
 import { Award, CalendarCheck, Star } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { AdEventType, InterstitialAd, TestIds } from 'react-native-google-mobile-ads';
 
+// ID do Intersticial fornecido
+const adUnitId = __DEV__ ? TestIds.INTERSTITIAL : 'ca-app-pub-1873423099734846/2915395144';
+const interstitial = InterstitialAd.createForAdRequest(adUnitId);
 
 export default function EventosScreen() {
   const eventos = getUpcomingSpecialContests(10);
@@ -53,7 +57,30 @@ export default function EventosScreen() {
   }
 
   useEffect(() => {
+    // 1. Ouvinte para mostrar o anúncio assim que carregar
+    const unsubscribeLoaded = interstitial.addAdEventListener(AdEventType.LOADED, () => {
+      try {
+        interstitial.show();
+      } catch (e) {
+        console.log("Erro ao mostrar intersticial:", e);
+      }
+    });
+
+    // 2. Ouvinte de erro para não travar o app se o anúncio falhar
+    const unsubscribeError = interstitial.addAdEventListener(AdEventType.ERROR, (error) => {
+      console.log("AdMob Interstitial Error:", error);
+    });
+
+    // 3. Inicia o carregamento do anúncio
+    interstitial.load();
+
+    // 4. Carrega os dados da Caixa
     fetchAll();
+
+    return () => {
+      unsubscribeLoaded();
+      unsubscribeError();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -6,6 +6,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { View } from 'react-native';
+import mobileAds from 'react-native-google-mobile-ads';
 import 'react-native-reanimated';
 
 import { ConsentBanner } from '@/src/components/ConsentBanner';
@@ -20,12 +21,13 @@ import { AdDisplayProvider } from '@/src/ads/AdDisplayContext';
 import { getGoogleMobileAds, initGoogleMobileAdsIfAvailable } from '@/src/ads/googleMobileAds';
 import { useConsentWithAds } from '@/src/components/useConsentWithAds';
 import { isAdEnabled } from '@/src/config/adConfig';
+import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
 
 // AdMob init is gated and best-effort (no crash on Expo Go).
 
 export {
-    // Catch any errors thrown by the Layout component.
-    ErrorBoundary
+  // Catch any errors thrown by the Layout component.
+  ErrorBoundary
 } from 'expo-router';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -61,6 +63,14 @@ export default function RootLayout() {
       });
     }
   }, [loaded]);
+
+    // Inicializar AdMob
+    useEffect(() => {
+      mobileAds().initialize().then(adapterStatuses => {
+        // Inicializado com sucesso!
+        console.log('AdMob inicializado:', adapterStatuses);
+      });
+    }, []);
 
   useEffect(() => {
     // Inicializar banco de dados de apostas
@@ -161,6 +171,18 @@ function RootLayoutNav() {
             <Stack.Screen name="termos-uso" options={{ title: 'Termos de Uso' }} />
             <Stack.Screen name="privacy-policy" options={{ title: 'Política de Privacidade' }} />
           </Stack>
+
+          {/* ADICIONE O BANNER AQUI ABAIXO DO STACK */}
+          <View style={{ alignItems: 'center', backgroundColor: '#181c24', paddingBottom: 5 }}>
+            <BannerAd
+              unitId={__DEV__ ? TestIds.BANNER : 'ca-app-pub-1873423099734846/6810230513'}
+              size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
+              requestOptions={{
+                requestNonPersonalizedAdsOnly: false,
+              }}
+            />
+          </View>
+
           {/* Banner de Consentimento GDPR/LGPD */}
           <ConsentBanner />
         </View>

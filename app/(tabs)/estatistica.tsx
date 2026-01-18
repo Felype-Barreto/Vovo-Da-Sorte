@@ -1,18 +1,28 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { RotateCcw } from 'lucide-react-native';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Image, Pressable, View as RNView, ScrollView, StyleSheet } from 'react-native';
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  View as RNView,
+  ScrollView,
+  StyleSheet,
+} from 'react-native';
+
 
 import { Text, View } from '@/components/Themed';
 import { GlassCard } from '@/src/components/GlassCard';
-import { NativeAdCard } from '@/src/components/NativeAdCard';
 import { NumberBall } from '@/src/components/NumberBall';
 import { useLottery } from '@/src/context/LotteryContext';
 import { maybeNotifyNewResultKnownContest } from '@/src/megasena/alerts';
 import { fetchCaixaLotteryOverview, loadCaixaLotteryHistoryLite, type CaixaLotteryOverview } from '@/src/megasena/lottery-caixa';
 import { getLotteryConfig } from '@/src/megasena/lotteryConfigs';
 import { computeFrequencies, topNumbers } from '@/src/megasena/stats';
-import type { LotteryDraw, LotteryType } from '@/src/megasena/types';
+import type { LotteryDraw } from '@/src/megasena/types';
+import { LotteryType } from '@/src/megasena/types';
+
+import { NativeAdCard } from '../../components/NativeAdCard';
 
 function formatDatePtBr(iso: string | undefined): string {
   if (!iso) return '—';
@@ -21,7 +31,7 @@ function formatDatePtBr(iso: string | undefined): string {
   return d.toLocaleDateString('pt-BR');
 }
 
-export default function HistoricoScreen() {
+export default function EstatisticaScreen() {
   const { selectedLottery, setSelectedLottery, availableLotteries } = useLottery();
 
   const [overview, setOverview] = useState<CaixaLotteryOverview | null>(null);
@@ -60,7 +70,7 @@ export default function HistoricoScreen() {
       });
 
       const d = await loadCaixaLotteryHistoryLite(selectedLottery, {
-        lastN: 40,
+        lastN: 20,
         concurrency: 2,
         delayMsBetweenRequests: 40,
         onProgress: (done, total) => {
@@ -76,7 +86,8 @@ export default function HistoricoScreen() {
         return map;
       });
       setLastUpdateTimestamp(Date.now());
-    } catch {
+    } catch (err) {
+      console.error("Erro na busca:", err);
       if (requestIdRef.current !== my) return;
       setOverview(null);
       setDrawsByLottery((prev) => {
@@ -110,6 +121,16 @@ export default function HistoricoScreen() {
     if (days === 1) return 'há 1 dia';
     return `há ${days} dias`;
   };
+
+  // --- TRAVA DE SEGURANÇA ADICIONADA AQUI (ESSENCIAL PARA 2026) ---
+  if (!config || !selectedLottery) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#181c24', justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#20d361" />
+        <Text style={{ color: '#fff', marginTop: 10 }}>Conectando com o Vovô...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -198,6 +219,9 @@ export default function HistoricoScreen() {
             })}
           </RNView>
         </GlassCard>
+
+        {/* INSERIR O ANÚNCIO NATIVO AQUI */}
+        <NativeAdCard />
 
         <GlassCard style={{ gap: 10 }}>
           <RNView style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>

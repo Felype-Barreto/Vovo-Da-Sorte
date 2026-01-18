@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "Vovô da Sorte",
-    "slug": "trevo-inteligente",
-    "version": "1.0.0",
+    "slug": "vovodasorte",
+    "version": "1.0.5",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "vovodasorte",
@@ -20,55 +20,45 @@
         "NSCameraUsageDescription": "Usamos a câmera para ler o código QR dos bilhetes de loteria e conferir seus números.",
         "NSUserTrackingUsageDescription": "Usamos dados de rastreamento para exibir anúncios personalizados e melhorar sua experiência.",
         "ITSAppUsesNonExemptEncryption": false
-      },
-      "config": {
-        "googleMobileAdsAppId": "ca-app-pub-1873423099734846~7668016615"
       }
     },
     "android": {
       "package": "com.vovodasorte.app",
-      "versionCode": 1,
+      "versionCode": 9,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#1a1a1a"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
+      "googleServicesFile": "./google-services.json",
       "permissions": [
         "CAMERA",
         "INTERNET",
         "ACCESS_NETWORK_STATE",
-        "VIBRATE",
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
-      ],
-      "googleServicesFile": "./google-services.json",
-      "config": {
-        "googleMobileAdsAppId": "ca-app-pub-1873423099734846~7668016615"
-      }
-    },
-    "web": {
-      "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
+        "VIBRATE"
+      ]
     },
     "plugins": [
       "expo-router",
+      "expo-sqlite",
       [
         "expo-camera",
         {
           "cameraPermission": "Usamos a câmera para ler o código QR dos bilhetes de loteria e conferir seus números."
         }
       ],
-      "expo-sqlite",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-1873423099734846~7668016615",
+          "iosAppId": "ca-app-pub-1873423099734846~7668016615"
+        }
+      ]
     ],
-    "experiments": {
-      "typedRoutes": true
-    },
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "cf1f7bc7-d060-48f4-a1e1-c871bb524159"
+        "projectId": "a3ad9c84-15d2-43a4-9936-69fc2d674350"
       }
     }
   }
